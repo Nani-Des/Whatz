@@ -1,0 +1,146 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@layer base {
+  body {
+    @apply m-0 antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  /* Reader view */
+  .post-content img {
+    @apply max-w-full h-auto;
+  }
+
+  .post-content mark {
+    @apply bg-yellow-200 px-0.5;
+  }
+
+  .post-content p {
+    margin: 0 0 0.4em;
+    line-height: 1.55;
+  }
+
+  .post-content table {
+    @apply w-full border-collapse my-3 text-sm;
+  }
+
+  .post-content th,
+  .post-content td {
+    @apply border border-gray-200 px-3 py-2 text-left;
+  }
+
+  .post-content th {
+    @apply bg-gray-50 font-semibold text-gray-800;
+  }
+
+  /* Editor canvas */
+  .tiptap-editor-content .tiptap-editor-body,
+  .tiptap-editor-content .tiptap {
+    @apply text-gray-800 text-base leading-normal;
+    font-family: 'Google Sans', 'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+
+  .tiptap-editor-content .tiptap p {
+    margin: 0 0 0.35em;
+    line-height: 1.5;
+  }
+
+  .tiptap-editor-content .tiptap h1 {
+    @apply text-3xl font-normal text-gray-900;
+    margin: 0.6em 0 0.25em;
+    line-height: 1.25;
+  }
+
+  .tiptap-editor-content .tiptap h2 {
+    @apply text-2xl font-normal text-gray-900;
+    margin: 0.55em 0 0.2em;
+    line-height: 1.3;
+  }
+
+  .tiptap-editor-content .tiptap h3 {
+    @apply text-xl font-medium text-gray-900;
+    margin: 0.5em 0 0.15em;
+    line-height: 1.35;
+  }
+
+  .tiptap-editor-content .tiptap ul,
+  .tiptap-editor-content .tiptap ol {
+    margin: 0.15em 0 0.35em;
+    padding-left: 1.5em;
+  }
+
+  .tiptap-editor-content .tiptap li {
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .tiptap-editor-content .tiptap li p {
+    margin: 0;
+  }
+
+  .tiptap-editor-content .tiptap blockquote {
+    @apply border-l-4 border-blue-400 text-gray-600;
+    margin: 0.35em 0;
+    padding-left: 1em;
+  }
+
+  .tiptap-editor-content .tiptap pre {
+    @apply rounded-lg bg-gray-900 text-gray-100 text-sm;
+    margin: 0.35em 0;
+    padding: 0.75em 1em;
+  }
+
+  .tiptap-editor-content .tiptap code {
+    @apply rounded bg-gray-100 px-1 py-0.5 text-sm text-gray-800;
+  }
+
+  .tiptap-editor-content .tiptap pre code {
+    @apply bg-transparent text-inherit p-0;
+  }
+
+  .tiptap-editor-content .tiptap hr {
+    @apply border-gray-200;
+    margin: 0.5em 0;
+  }
+
+  .tiptap-editor-content .tiptap img {
+    @apply max-w-full rounded-lg my-2;
+  }
+
+  .tiptap-editor-content .tiptap a {
+    @apply text-blue-600 underline;
+  }
+
+  .tiptap-editor-content .tiptap mark {
+    @apply bg-yellow-200 px-0.5 rounded-sm;
+  }
+
+  .tiptap-editor-content .tiptap table {
+    @apply w-full border-collapse my-2 text-sm;
+  }
+
+  .tiptap-editor-content .tiptap th,
+  .tiptap-editor-content .tiptap td {
+    @apply border border-gray-200 px-3 py-1.5 min-w-[4rem];
+    vertical-align: top;
+  }
+
+  .tiptap-editor-content .tiptap th {
+    @apply bg-gray-50 font-semibold text-gray-800;
+  }
+
+  .tiptap-editor-content .tiptap .selectedCell {
+    @apply bg-blue-50;
+  }
+
+  .tiptap-editor-content .tiptap p.is-editor-empty:first-child::before {
+    @apply text-gray-400 float-left h-0 pointer-events-none;
+    content: attr(data-placeholder);
+  }
+}
