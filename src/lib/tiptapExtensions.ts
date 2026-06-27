@@ -12,9 +12,12 @@ import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import { FontSize } from './fontSizeExtension'
+import { FontFamily } from './fontFamilyExtension'
 
 const sharedKit = {
   heading: { levels: [1, 2, 3] as (1 | 2 | 3)[] },
+  link: false as const,
+  underline: false as const,
 }
 
 export const editorExtensions = [
@@ -22,6 +25,7 @@ export const editorExtensions = [
   Underline,
   TextStyle,
   FontSize,
+  FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight.configure({ multicolor: false }),
   Image.configure({ inline: false, allowBase64: true }),
@@ -41,6 +45,7 @@ export const contentExtensions = [
   Underline,
   TextStyle,
   FontSize,
+  FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight,
   Image,

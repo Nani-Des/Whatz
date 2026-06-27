@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Editor from '../components/Editor'
+import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
 import { createPost, getPost, updatePost } from '../services/posts'
 import type { PostStatus } from '../types/post'
 
@@ -54,7 +55,7 @@ export default function EditorPage() {
         setStatus(post.status)
         setPostId(post.id)
       })
-      .catch(() => setError('Failed to load post.'))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load post.'))
       .finally(() => setLoading(false))
   }, [id, isNew])
 
@@ -84,9 +85,9 @@ export default function EditorPage() {
       statusRef.current = 'draft'
       setSaveMessage('Draft saved')
       setTimeout(() => setSaveMessage(''), 2000)
-    } catch {
+    } catch (err) {
       setSaveMessage('')
-      if (!silent) setError('Failed to save draft.')
+      if (!silent) setError(err instanceof Error ? err.message : 'Failed to save draft.')
     } finally {
       setSaving(false)
     }
@@ -118,12 +119,14 @@ export default function EditorPage() {
       } else {
         const newId = await createPost(data)
         setPostId(newId)
+        postIdRef.current = newId
       }
       setStatus('published')
+      statusRef.current = 'published'
       setSaveMessage('Published!')
-      setTimeout(() => navigate('/dashboard'), 1000)
-    } catch {
-      setError('Failed to publish post.')
+      setTimeout(() => navigate('/dashboard/posts'), 1000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to publish post.')
       setSaveMessage('')
     } finally {
       setSaving(false)
@@ -132,19 +135,19 @@ export default function EditorPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f0f4f9]">
-        <p className="text-gray-500">Loading editor...</p>
+      <div className="flex min-h-screen items-center justify-center bg-neutral-100">
+        <p className="text-neutral-500">Loading editor...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9]">
-      <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/95 backdrop-blur-sm">
+    <div className="min-h-screen bg-neutral-100">
+      <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-[816px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
           <Link
             to="/dashboard"
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-black transition-colors"
           >
             <span className="text-lg leading-none">←</span>
             <span className="hidden sm:inline">Dashboard</span>
@@ -152,10 +155,10 @@ export default function EditorPage() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {saveMessage && (
-              <span className="text-xs text-gray-400 tabular-nums">{saveMessage}</span>
+              <span className="text-xs text-neutral-400 tabular-nums">{saveMessage}</span>
             )}
             {status === 'published' && (
-              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200/60">
+              <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700">
                 Published
               </span>
             )}
@@ -163,7 +166,7 @@ export default function EditorPage() {
               type="button"
               onClick={() => saveDraft(false)}
               disabled={saving}
-              className="rounded-full border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
             >
               Save draft
             </button>
@@ -171,7 +174,7 @@ export default function EditorPage() {
               type="button"
               onClick={handlePublish}
               disabled={saving}
-              className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+              className="rounded-full bg-black px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 transition-colors"
             >
               Publish
             </button>
@@ -181,9 +184,9 @@ export default function EditorPage() {
 
       <main className="mx-auto max-w-[816px] px-4 py-6 sm:px-6 sm:py-8">
         {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-            {error}
-          </p>
+          <div className="mb-4">
+            <FirestoreSetupBanner message={error} />
+          </div>
         )}
 
         <div className="mb-4 space-y-3">
@@ -192,14 +195,14 @@ export default function EditorPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title"
-            className="w-full border-0 bg-transparent text-[2rem] sm:text-[2.25rem] font-normal text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-0 leading-tight tracking-tight"
+            className="w-full border-0 bg-transparent text-[2rem] sm:text-[2.25rem] font-normal text-black placeholder-neutral-400 focus:outline-none focus:ring-0 leading-tight tracking-tight"
           />
           <input
             type="text"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
             placeholder="Add tags separated by commas"
-            className="w-full border-0 bg-transparent text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
+            className="w-full border-0 bg-transparent text-sm text-neutral-500 placeholder-neutral-400 focus:outline-none focus:ring-0"
           />
         </div>
 

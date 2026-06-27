@@ -6,6 +6,7 @@ export interface Post {
   content: string
   tags: string[]
   status: PostStatus
+  viewCount: number
   createdAt: Date
   updatedAt: Date
 }

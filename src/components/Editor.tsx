@@ -39,12 +39,12 @@ export default function Editor({ content, onChange }: EditorProps) {
   const wordCount = editor?.storage.characterCount?.words() ?? 0
 
   return (
-    <div className="editor-surface overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_3px_rgba(60,64,67,0.15),0_4px_8px_rgba(60,64,67,0.08)]">
+    <div className="editor-surface overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
       <Toolbar editor={editor} />
-      <div className="tiptap-editor-content px-6 py-5 sm:px-12 sm:py-8 min-h-[480px]">
+      <div className="tiptap-editor-content px-6 py-5 sm:px-12 sm:py-8 min-h-[480px] bg-white">
         <EditorContent editor={editor} />
       </div>
-      <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50/60 px-4 py-2 text-xs text-gray-400">
+      <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-xs text-neutral-500">
         <span>{wordCount} words</span>
         <span>{charCount} characters</span>
       </div>

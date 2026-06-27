@@ -3,13 +3,13 @@ import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDmRljYc-psePWbCK6Un9xhbSEN8eLqDcI",
-  authDomain: "tracegear-f35d2.firebaseapp.com",
-  projectId: "tracegear-f35d2",
-  storageBucket: "tracegear-f35d2.firebasestorage.app",
-  messagingSenderId: "220475721154",
-  appId: "1:220475721154:web:eefd535fbdd21640cb025b",
-  measurementId: "G-915X8Q57EF"
+  apiKey: "AIzaSyBdnYYi0kATHwc5oJ32p9yzCzxOpIQxvFA",
+  authDomain: "whatz-1a.firebaseapp.com",
+  projectId: "whatz-1a",
+  storageBucket: "whatz-1a.firebasestorage.app",
+  messagingSenderId: "501870253543",
+  appId: "1:501870253543:web:4407f4551da57b1dbe1942",
+  measurementId: "G-0Y4EE54BF3"
 }
 
 const app = initializeApp(firebaseConfig)

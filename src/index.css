@@ -26,6 +26,95 @@
     line-height: 1.55;
   }
 
+  .post-content ul {
+    list-style-type: disc;
+    list-style-position: outside;
+    margin: 0.25em 0 0.4em;
+    padding-left: 1.75em;
+  }
+
+  .post-content ol {
+    list-style-type: decimal;
+    list-style-position: outside;
+    margin: 0.25em 0 0.4em;
+    padding-left: 1.75em;
+  }
+
+  .post-content ul ul {
+    list-style-type: circle;
+  }
+
+  .post-content ul ul ul {
+    list-style-type: square;
+  }
+
+  .post-content li {
+    margin: 0.1em 0;
+    padding-left: 0.25em;
+  }
+
+  .post-content li::marker {
+    color: #374151;
+  }
+
+  .post-content-dark {
+    @apply text-slate-300;
+  }
+
+  .post-content-dark.prose,
+  .post-content-dark .post-content {
+    @apply text-slate-300;
+  }
+
+  .post-content-dark .post-content h1,
+  .post-content-dark .post-content h2,
+  .post-content-dark .post-content h3 {
+    @apply text-white;
+  }
+
+  .post-content-dark .post-content p {
+    @apply text-slate-300;
+    margin: 0 0 0.4em;
+    line-height: 1.55;
+  }
+
+  .post-content-dark .post-content a {
+    @apply text-neutral-300 underline;
+  }
+
+  .post-content-dark .post-content code {
+    @apply bg-white/10 text-neutral-200;
+  }
+
+  .post-content-dark .post-content blockquote {
+    @apply border-neutral-600 text-neutral-400;
+  }
+
+  .post-content-dark .post-content ul {
+    list-style-type: disc;
+    list-style-position: outside;
+    padding-left: 1.75em;
+  }
+
+  .post-content-dark .post-content ol {
+    list-style-type: decimal;
+    list-style-position: outside;
+    padding-left: 1.75em;
+  }
+
+  .post-content-dark .post-content li::marker {
+    color: #94a3b8;
+  }
+
+  .post-content-dark .post-content table th {
+    @apply bg-white/5 text-slate-200;
+  }
+
+  .post-content-dark .post-content table td,
+  .post-content-dark .post-content table th {
+    @apply border-white/10;
+  }
+
   .post-content table {
     @apply w-full border-collapse my-3 text-sm;
   }
@@ -72,12 +161,36 @@
   .tiptap-editor-content .tiptap ul,
   .tiptap-editor-content .tiptap ol {
     margin: 0.15em 0 0.35em;
-    padding-left: 1.5em;
+    padding-left: 1.75em;
+  }
+
+  .tiptap-editor-content .tiptap ul {
+    list-style-type: disc;
+    list-style-position: outside;
+  }
+
+  .tiptap-editor-content .tiptap ol {
+    list-style-type: decimal;
+    list-style-position: outside;
+  }
+
+  .tiptap-editor-content .tiptap ul ul {
+    list-style-type: circle;
+  }
+
+  .tiptap-editor-content .tiptap ul ul ul {
+    list-style-type: square;
   }
 
   .tiptap-editor-content .tiptap li {
-    margin: 0;
+    margin: 0.1em 0;
+    padding-left: 0.25em;
     line-height: 1.45;
+    display: list-item;
+  }
+
+  .tiptap-editor-content .tiptap li::marker {
+    color: #374151;
   }
 
   .tiptap-editor-content .tiptap li p {
@@ -85,7 +198,7 @@
   }
 
   .tiptap-editor-content .tiptap blockquote {
-    @apply border-l-4 border-blue-400 text-gray-600;
+    @apply border-l-4 border-neutral-400 text-neutral-600;
     margin: 0.35em 0;
     padding-left: 1em;
   }
@@ -114,7 +227,7 @@
   }
 
   .tiptap-editor-content .tiptap a {
-    @apply text-blue-600 underline;
+    @apply text-neutral-800 underline;
   }
 
   .tiptap-editor-content .tiptap mark {
@@ -136,7 +249,7 @@
   }
 
   .tiptap-editor-content .tiptap .selectedCell {
-    @apply bg-blue-50;
+    @apply bg-neutral-100;
   }
 
   .tiptap-editor-content .tiptap p.is-editor-empty:first-child::before {

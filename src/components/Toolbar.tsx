@@ -6,6 +6,10 @@ import {
   stepFontSize,
 } from '../lib/fontSizeExtension'
 import {
+  FONT_FAMILIES,
+  getCurrentFontFamily,
+} from '../lib/fontFamilyExtension'
+import {
   IconAlignCenter,
   IconAlignJustify,
   IconAlignLeft,
@@ -47,8 +51,8 @@ function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarBu
       title={title}
       className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
         active
-          ? 'bg-blue-100 text-blue-700'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-neutral-800 text-white'
+          : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900'
       } ${disabled ? 'opacity-35 cursor-not-allowed' : ''}`}
     >
       {children}
@@ -89,6 +93,7 @@ export default function Toolbar({ editor }: ToolbarProps) {
 
   const fontSize = getCurrentFontSize(editor)
   const fontSizeLabel = fontSize.replace('px', '')
+  const fontFamily = getCurrentFontFamily(editor)
   const blockType = getBlockType(editor)
   const inTable = editor.isActive('table')
 
@@ -132,8 +137,16 @@ export default function Toolbar({ editor }: ToolbarProps) {
     changeFontSize(stepFontSize(fontSize, direction))
   }
 
+  const changeFontFamily = (value: string) => {
+    if (value) {
+      editor.chain().focus().setFontFamily(value).run()
+    } else {
+      editor.chain().focus().unsetFontFamily().run()
+    }
+  }
+
   return (
-    <div className="sticky top-0 z-20 border-b border-gray-200/80 bg-[#f9fbfd]">
+    <div className="sticky top-0 z-20 border-b border-neutral-200 bg-neutral-50">
       <div className="flex items-center gap-0.5 overflow-x-auto px-3 py-2 scrollbar-thin">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
@@ -156,12 +169,26 @@ export default function Toolbar({ editor }: ToolbarProps) {
           value={blockType}
           onChange={(e) => setBlockType(e.target.value)}
           title="Text style"
-          className="h-8 max-w-[7.5rem] shrink-0 rounded-md border-0 bg-transparent px-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+          className="h-8 max-w-[7.5rem] shrink-0 rounded-md border-0 bg-transparent px-2 text-sm text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400/40 cursor-pointer"
         >
           <option value="paragraph">Normal text</option>
           <option value="h1">Heading 1</option>
           <option value="h2">Heading 2</option>
           <option value="h3">Heading 3</option>
+        </select>
+
+        <select
+          value={fontFamily}
+          onChange={(e) => changeFontFamily(e.target.value)}
+          title="Font"
+          className="h-8 max-w-[9rem] shrink-0 rounded-md border border-neutral-200 bg-white px-2 text-sm text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400/40 cursor-pointer"
+          style={{ fontFamily: fontFamily || undefined }}
+        >
+          {FONT_FAMILIES.map((font) => (
+            <option key={font.label} value={font.value} style={{ fontFamily: font.value || undefined }}>
+              {font.label}
+            </option>
+          ))}
         </select>
 
         <Divider />
@@ -318,39 +345,71 @@ export default function Toolbar({ editor }: ToolbarProps) {
         {inTable && (
           <>
             <Divider />
-            <div className="flex shrink-0 items-center gap-0.5">
+            <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-md border border-gray-200 bg-white px-1 py-0.5">
+              <span className="px-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Table</span>
               <button
                 type="button"
                 onClick={() => editor.chain().focus().addRowBefore().run()}
-                className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Add row above"
               >
                 + Row ↑
               </button>
               <button
                 type="button"
                 onClick={() => editor.chain().focus().addRowAfter().run()}
-                className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Add row below"
               >
                 + Row ↓
               </button>
               <button
                 type="button"
+                onClick={() => editor.chain().focus().deleteRow().run()}
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Delete current row"
+              >
+                − Row
+              </button>
+              <span className="mx-0.5 h-4 w-px bg-gray-200" />
+              <button
+                type="button"
                 onClick={() => editor.chain().focus().addColumnBefore().run()}
-                className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Add column left"
               >
                 + Col ←
               </button>
               <button
                 type="button"
                 onClick={() => editor.chain().focus().addColumnAfter().run()}
-                className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Add column right"
               >
                 + Col →
               </button>
               <button
                 type="button"
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Delete current column"
+              >
+                − Col
+              </button>
+              <span className="mx-0.5 h-4 w-px bg-gray-200" />
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                title="Toggle header row"
+              >
+                Header row
+              </button>
+              <button
+                type="button"
                 onClick={() => editor.chain().focus().deleteTable().run()}
-                className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                title="Delete entire table"
               >
                 Delete table
               </button>

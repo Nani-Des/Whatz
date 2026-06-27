@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore, isAdminUser } from '../stores/authStore'
 
 interface PrivateRouteProps {
   children: React.ReactNode
@@ -10,13 +10,13 @@ export default function PrivateRoute({ children }: PrivateRouteProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="text-neutral-400">Loading...</div>
       </div>
     )
   }
 
-  if (!user) {
+  if (!user || !isAdminUser(user)) {
     return <Navigate to="/admin" replace />
   }
 
