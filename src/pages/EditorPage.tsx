@@ -1,17 +1,66 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Editor from '../components/Editor'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
+import MediaReferencesPanel from '../components/MediaReferencesPanel'
+import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import { createPost, getPost, updatePost } from '../services/posts'
-import type { PostStatus } from '../types/post'
+import { savePostVersion } from '../services/versions'
+import { uploadEditorImage, uploadPostCover } from '../services/storage'
+import type { PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
+import { slugify } from '../utils/slug'
+import { getExcerpt } from '../utils/excerpt'
 
 const AUTOSAVE_INTERVAL = 30000
 
 function parseTags(input: string): string[] {
-  return input
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean)
+  return input.split(',').map((t) => t.trim()).filter(Boolean)
+}
+
+function buildPostData(fields: {
+  title: string
+  content: string
+  tagsInput: string
+  excerpt: string
+  slug: string
+  type: PostType
+  status: PostStatus
+  pinned: boolean
+  coverImageUrl: string
+  seoTitle: string
+  seoDescription: string
+  ogImageUrl: string
+  references: PostReference[]
+  projectDemoUrl: string
+  projectRepoUrl: string
+  projectTechStack: string
+  scheduledPublishAt: string
+}): PostInput {
+  const scheduled = fields.scheduledPublishAt ? new Date(fields.scheduledPublishAt) : null
+  let status = fields.status
+  if (scheduled && scheduled.getTime() > Date.now()) {
+    status = 'scheduled'
+  }
+
+  return {
+    title: fields.title,
+    content: fields.content,
+    excerpt: fields.excerpt || getExcerpt(fields.content, 160),
+    slug: fields.slug || undefined,
+    tags: parseTags(fields.tagsInput),
+    type: fields.type,
+    status,
+    pinned: fields.pinned,
+    coverImageUrl: fields.coverImageUrl,
+    seoTitle: fields.seoTitle || fields.title,
+    seoDescription: fields.seoDescription || fields.excerpt || getExcerpt(fields.content, 160),
+    ogImageUrl: fields.ogImageUrl || fields.coverImageUrl,
+    references: fields.references,
+    projectDemoUrl: fields.projectDemoUrl,
+    projectRepoUrl: fields.projectRepoUrl,
+    projectTechStack: parseTags(fields.projectTechStack),
+    scheduledPublishAt: scheduled,
+  }
 }
 
 export default function EditorPage() {
@@ -22,67 +71,101 @@ export default function EditorPage() {
   const [title, setTitle] = useState('')
   const [tagsInput, setTagsInput] = useState('')
   const [content, setContent] = useState('')
+  const [excerpt, setExcerpt] = useState('')
+  const [slug, setSlug] = useState('')
+  const [type, setType] = useState<PostType>('article')
   const [status, setStatus] = useState<PostStatus>('draft')
-  const [postId, setPostId] = useState<string | null>(isNew ? null : id)
+  const [pinned, setPinned] = useState(false)
+  const [coverImageUrl, setCoverImageUrl] = useState('')
+  const [seoTitle, setSeoTitle] = useState('')
+  const [seoDescription, setSeoDescription] = useState('')
+  const [ogImageUrl, setOgImageUrl] = useState('')
+  const [references, setReferences] = useState<PostReference[]>([])
+  const [projectDemoUrl, setProjectDemoUrl] = useState('')
+  const [projectRepoUrl, setProjectRepoUrl] = useState('')
+  const [projectTechStack, setProjectTechStack] = useState('')
+  const [scheduledPublishAt, setScheduledPublishAt] = useState('')
+  const [showSeo, setShowSeo] = useState(false)
+
+  const [postId, setPostId] = useState<string | null>(isNew ? null : id ?? null)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [error, setError] = useState('')
 
-  const titleRef = useRef(title)
-  const tagsRef = useRef(tagsInput)
-  const contentRef = useRef(content)
-  const statusRef = useRef(status)
+  const fieldsRef = useRef({
+    title, tagsInput, content, excerpt, slug, type, status, pinned,
+    coverImageUrl, seoTitle, seoDescription, ogImageUrl, references,
+    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt,
+  })
+  fieldsRef.current = {
+    title, tagsInput, content, excerpt, slug, type, status, pinned,
+    coverImageUrl, seoTitle, seoDescription, ogImageUrl, references,
+    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt,
+  }
   const postIdRef = useRef(postId)
-
-  titleRef.current = title
-  tagsRef.current = tagsInput
-  contentRef.current = content
-  statusRef.current = status
   postIdRef.current = postId
 
   useEffect(() => {
     if (isNew) return
     getPost(id!)
       .then((post) => {
-        if (!post) {
-          setError('Post not found.')
-          return
-        }
+        if (!post) { setError('Post not found.'); return }
         setTitle(post.title)
         setTagsInput(post.tags.join(', '))
         setContent(post.content)
+        setExcerpt(post.excerpt)
+        setSlug(post.slug)
+        setType(post.type)
         setStatus(post.status)
+        setPinned(post.pinned)
+        setCoverImageUrl(post.coverImageUrl)
+        setSeoTitle(post.seoTitle)
+        setSeoDescription(post.seoDescription)
+        setOgImageUrl(post.ogImageUrl)
+        setReferences(post.references)
+        setProjectDemoUrl(post.projectDemoUrl)
+        setProjectRepoUrl(post.projectRepoUrl)
+        setProjectTechStack(post.projectTechStack.join(', '))
+        setScheduledPublishAt(post.scheduledPublishAt ? post.scheduledPublishAt.toISOString().slice(0, 16) : '')
         setPostId(post.id)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load post.'))
       .finally(() => setLoading(false))
   }, [id, isNew])
 
-  const saveDraft = useCallback(async (silent = false) => {
-    const data = {
-      title: titleRef.current,
-      content: contentRef.current,
-      tags: parseTags(tagsRef.current),
-      status: 'draft' as PostStatus,
-    }
+  const ensurePostId = useCallback(async (): Promise<string> => {
+    if (postIdRef.current) return postIdRef.current
+    const data = buildPostData({ ...fieldsRef.current, status: 'draft' })
+    const newId = await createPost(data)
+    setPostId(newId)
+    postIdRef.current = newId
+    navigate(`/editor/${newId}`, { replace: true })
+    return newId
+  }, [navigate])
 
+  const saveDraft = useCallback(async (silent = false) => {
+    const data = buildPostData({ ...fieldsRef.current, status: 'draft' })
     setSaving(true)
-    if (!silent) setSaveMessage('Saving...')
+    if (!silent) setSaveMessage('Saving…')
 
     try {
-      if (postIdRef.current) {
-        await updatePost(postIdRef.current, data)
+      let currentId = postIdRef.current
+      if (currentId) {
+        await updatePost(currentId, data)
+        await savePostVersion(currentId, {
+          title: data.title,
+          content: data.content,
+          excerpt: data.excerpt ?? '',
+          tags: data.tags,
+        })
       } else {
-        const newId = await createPost(data)
-        setPostId(newId)
-        postIdRef.current = newId
-        if (!silent) {
-          navigate(`/editor/${newId}`, { replace: true })
-        }
+        currentId = await createPost(data)
+        setPostId(currentId)
+        postIdRef.current = currentId
+        if (!silent) navigate(`/editor/${currentId}`, { replace: true })
       }
-      setStatus('draft')
-      statusRef.current = 'draft'
+      setStatus(data.status === 'scheduled' ? 'scheduled' : 'draft')
       setSaveMessage('Draft saved')
       setTimeout(() => setSaveMessage(''), 2000)
     } catch (err) {
@@ -95,48 +178,91 @@ export default function EditorPage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (titleRef.current || contentRef.current) {
-        saveDraft(true)
-      }
+      if (titleRef.current || contentRef.current) saveDraft(true)
     }, AUTOSAVE_INTERVAL)
     return () => clearInterval(interval)
   }, [saveDraft])
 
+  const titleRef = useRef(title)
+  const contentRef = useRef(content)
+  titleRef.current = title
+  contentRef.current = content
+
   const handlePublish = async () => {
-    const data = {
-      title: title,
-      content: content,
-      tags: parseTags(tagsInput),
-      status: 'published' as PostStatus,
-    }
-
+    const data = buildPostData({ ...fieldsRef.current, status: 'published', scheduledPublishAt: '' })
     setSaving(true)
-    setSaveMessage('Publishing...')
-
+    setSaveMessage('Publishing…')
     try {
       if (postId) {
-        await updatePost(postId, data)
+        await updatePost(postId, { ...data, scheduledPublishAt: null })
+        await savePostVersion(postId, { title: data.title, content: data.content, excerpt: data.excerpt ?? '', tags: data.tags })
       } else {
         const newId = await createPost(data)
         setPostId(newId)
-        postIdRef.current = newId
       }
       setStatus('published')
-      statusRef.current = 'published'
       setSaveMessage('Published!')
       setTimeout(() => navigate('/dashboard/posts'), 1000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to publish post.')
+      setError(err instanceof Error ? err.message : 'Failed to publish.')
       setSaveMessage('')
     } finally {
       setSaving(false)
     }
   }
 
+  const handleSchedule = async () => {
+    if (!scheduledPublishAt) {
+      setError('Pick a date and time to schedule.')
+      return
+    }
+    const data = buildPostData(fieldsRef.current)
+    setSaving(true)
+    try {
+      if (postId) await updatePost(postId, data)
+      else {
+        const newId = await createPost(data)
+        setPostId(newId)
+        navigate(`/editor/${newId}`, { replace: true })
+      }
+      setStatus('scheduled')
+      setSaveMessage('Scheduled!')
+      setTimeout(() => setSaveMessage(''), 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to schedule.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleImageUpload = async (file: File): Promise<string> => {
+    const pid = await ensurePostId()
+    return uploadEditorImage(pid, file)
+  }
+
+  const handleCoverUpload = async (file: File) => {
+    try {
+      const pid = await ensurePostId()
+      const url = await uploadPostCover(pid, file)
+      setCoverImageUrl(url)
+      if (!ogImageUrl) setOgImageUrl(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cover upload failed.')
+    }
+  }
+
+  const handleRestoreVersion = (version: PostVersion) => {
+    if (!window.confirm(`Restore version from ${version.createdAt.toLocaleString()}?`)) return
+    setTitle(version.title)
+    setContent(version.content)
+    setExcerpt(version.excerpt)
+    setTagsInput(version.tags.join(', '))
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-100">
-        <p className="text-neutral-500">Loading editor...</p>
+        <p className="text-neutral-500">Loading editor…</p>
       </div>
     )
   }
@@ -144,69 +270,156 @@ export default function EditorPage() {
   return (
     <div className="min-h-screen bg-neutral-100">
       <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-[816px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-black transition-colors"
-          >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
+          <Link to="/dashboard" className="flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-black">
             <span className="text-lg leading-none">←</span>
             <span className="hidden sm:inline">Dashboard</span>
           </Link>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            {saveMessage && (
-              <span className="text-xs text-neutral-400 tabular-nums">{saveMessage}</span>
-            )}
-            {status === 'published' && (
-              <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700">
-                Published
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {saveMessage && <span className="text-xs text-neutral-400">{saveMessage}</span>}
+            {status !== 'draft' && (
+              <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 capitalize">
+                {status}
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => saveDraft(false)}
-              disabled={saving}
-              className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
-            >
+            <button type="button" onClick={() => saveDraft(false)} disabled={saving} className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
               Save draft
             </button>
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={saving}
-              className="rounded-full bg-black px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 transition-colors"
-            >
+            <button type="button" onClick={handleSchedule} disabled={saving || !scheduledPublishAt} className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+              Schedule
+            </button>
+            <button type="button" onClick={handlePublish} disabled={saving} className="rounded-full bg-black px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50">
               Publish
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[816px] px-4 py-6 sm:px-6 sm:py-8">
-        {error && (
-          <div className="mb-4">
-            <FirestoreSetupBanner message={error} />
-          </div>
-        )}
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_280px]">
+        <div>
+          {error && (
+            <div className="mb-4">
+              <FirestoreSetupBanner message={error} />
+            </div>
+          )}
 
-        <div className="mb-4 space-y-3">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            className="w-full border-0 bg-transparent text-[2rem] sm:text-[2.25rem] font-normal text-black placeholder-neutral-400 focus:outline-none focus:ring-0 leading-tight tracking-tight"
-          />
-          <input
-            type="text"
-            value={tagsInput}
-            onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="Add tags separated by commas"
-            className="w-full border-0 bg-transparent text-sm text-neutral-500 placeholder-neutral-400 focus:outline-none focus:ring-0"
+          <div className="mb-4 space-y-3">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value)
+                if (!slug || slug === slugify(title)) setSlug(slugify(e.target.value))
+              }}
+              placeholder="Title"
+              className="w-full border-0 bg-transparent text-[2rem] font-normal text-black placeholder-neutral-400 focus:outline-none sm:text-[2.25rem] leading-tight tracking-tight"
+            />
+            <div className="flex flex-wrap gap-3">
+              <input
+                type="text"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="Tags (comma-separated)"
+                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-neutral-500 placeholder-neutral-400 focus:outline-none"
+              />
+              <select value={type} onChange={(e) => setType(e.target.value as PostType)} className="rounded-lg border border-neutral-200 bg-white px-3 py-1 text-sm">
+                <option value="article">Article</option>
+                <option value="project">Project</option>
+              </select>
+              <label className="flex items-center gap-2 text-sm text-neutral-600">
+                <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+                Pin to top
+              </label>
+            </div>
+            <input
+              type="text"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              placeholder="Excerpt (optional — used in cards & SEO)"
+              className="w-full border-0 bg-transparent text-sm text-neutral-500 placeholder-neutral-400 focus:outline-none"
+            />
+          </div>
+
+          <Editor
+            content={content}
+            onChange={setContent}
+            postId={postId}
+            references={references}
+            onSave={() => saveDraft(false)}
+            onImageUpload={handleImageUpload}
           />
         </div>
 
-        <Editor content={content} onChange={setContent} />
+        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <div className="rounded-xl border border-neutral-200 bg-white p-4">
+            <label className="block text-sm font-semibold text-neutral-900">URL slug</label>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(slugify(e.target.value))}
+              placeholder="my-post-title"
+              className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:border-neutral-400 focus:outline-none"
+            />
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white p-4">
+            <label className="block text-sm font-semibold text-neutral-900">Schedule publish</label>
+            <input
+              type="datetime-local"
+              value={scheduledPublishAt}
+              onChange={(e) => setScheduledPublishAt(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:border-neutral-400 focus:outline-none"
+            />
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white p-4">
+            <label className="block text-sm font-semibold text-neutral-900">Cover image</label>
+            {coverImageUrl && (
+              <img src={coverImageUrl} alt="" className="mt-2 w-full rounded-lg object-cover" />
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="mt-2 w-full text-xs"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleCoverUpload(file)
+              }}
+            />
+          </div>
+
+          {type === 'project' && (
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
+              <p className="text-sm font-semibold text-neutral-900">Project details</p>
+              <input type="url" value={projectDemoUrl} onChange={(e) => setProjectDemoUrl(e.target.value)} placeholder="Demo URL" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
+              <input type="url" value={projectRepoUrl} onChange={(e) => setProjectRepoUrl(e.target.value)} placeholder="Repo URL" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
+              <input type="text" value={projectTechStack} onChange={(e) => setProjectTechStack(e.target.value)} placeholder="Tech stack (comma-separated)" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
+            </div>
+          )}
+
+          <MediaReferencesPanel
+            references={references}
+            onChange={setReferences}
+            postId={postId}
+            onEnsurePostId={ensurePostId}
+          />
+
+          <div className="rounded-xl border border-neutral-200 bg-white">
+            <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-900">
+              SEO & sharing
+              <span className="text-neutral-400">{showSeo ? '▲' : '▼'}</span>
+            </button>
+            {showSeo && (
+              <div className="space-y-3 border-t border-neutral-100 px-4 py-3">
+                <input type="text" value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} placeholder="SEO title" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
+                <textarea value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} placeholder="Meta description (for LinkedIn, Google)" rows={3} className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
+                <input type="url" value={ogImageUrl} onChange={(e) => setOgImageUrl(e.target.value)} placeholder="OG image URL" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
+              </div>
+            )}
+          </div>
+
+          <VersionHistoryPanel postId={postId} onRestore={handleRestoreVersion} />
+        </aside>
       </main>
     </div>
   )

@@ -2,6 +2,7 @@ import type { Profile } from '../types/profile'
 
 interface ProfileHeroProps {
   profile: Profile
+  portfolioUrl?: string
 }
 
 function SocialLink({
@@ -40,7 +41,7 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-export default function ProfileHero({ profile }: ProfileHeroProps) {
+export default function ProfileHero({ profile, portfolioUrl }: ProfileHeroProps) {
   const socials = [
     {
       key: 'linkedin',
@@ -107,6 +108,11 @@ export default function ProfileHero({ profile }: ProfileHeroProps) {
               <p className="mt-2 text-sm text-neutral-500">{profile.location}</p>
             )}
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-neutral-400">{profile.bio}</p>
+            {portfolioUrl && (
+              <p className="mt-3 text-xs text-neutral-600">
+                Portfolio: <span className="text-neutral-400">{portfolioUrl.replace(/^https?:\/\//, '')}</span>
+              </p>
+            )}
           </div>
         </div>
 

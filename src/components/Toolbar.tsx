@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import {
   FONT_SIZES,
@@ -71,12 +71,21 @@ function getBlockType(editor: Editor): string {
   return 'paragraph'
 }
 
+import type { PostReference } from '../types/post'
+import { formatCitationLabel } from '../utils/citations'
+
 interface ToolbarProps {
   editor: Editor | null
+  postId?: string | null
+  references?: PostReference[]
+  onImageUpload?: (file: File) => Promise<string>
 }
 
-export default function Toolbar({ editor }: ToolbarProps) {
+export default function Toolbar({ editor, onImageUpload, references = [] }: ToolbarProps) {
   const [, tick] = useState(0)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const onImageUploadRef = useRef(onImageUpload)
+  onImageUploadRef.current = onImageUpload
 
   useEffect(() => {
     if (!editor) return
@@ -89,6 +98,30 @@ export default function Toolbar({ editor }: ToolbarProps) {
     }
   }, [editor])
 
+  useEffect(() => {
+    if (!editor) return
+
+    const setLink = () => {
+      const previousUrl = editor.getAttributes('link').href as string | undefined
+      const url = window.prompt('Enter URL', previousUrl || 'https://')
+      if (url === null) return
+      if (url === '') {
+        editor.chain().focus().extendMarkRange('link').unsetLink().run()
+        return
+      }
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    }
+
+    const openImagePicker = () => imageInputRef.current?.click()
+
+    window.addEventListener('editor:set-link', setLink)
+    window.addEventListener('editor:open-image-picker', openImagePicker)
+    return () => {
+      window.removeEventListener('editor:set-link', setLink)
+      window.removeEventListener('editor:open-image-picker', openImagePicker)
+    }
+  }, [editor])
+
   if (!editor) return null
 
   const fontSize = getCurrentFontSize(editor)
@@ -98,68 +131,58 @@ export default function Toolbar({ editor }: ToolbarProps) {
   const inTable = editor.isActive('table')
 
   const setBlockType = (value: string) => {
-    if (value === 'paragraph') {
-      editor.chain().focus().setParagraph().run()
-    } else if (value === 'h1') {
-      editor.chain().focus().toggleHeading({ level: 1 }).run()
-    } else if (value === 'h2') {
-      editor.chain().focus().toggleHeading({ level: 2 }).run()
-    } else if (value === 'h3') {
-      editor.chain().focus().toggleHeading({ level: 3 }).run()
-    }
+    if (value === 'paragraph') editor.chain().focus().setParagraph().run()
+    else if (value === 'h1') editor.chain().focus().toggleHeading({ level: 1 }).run()
+    else if (value === 'h2') editor.chain().focus().toggleHeading({ level: 2 }).run()
+    else if (value === 'h3') editor.chain().focus().toggleHeading({ level: 3 }).run()
   }
 
-  const setLink = () => {
-    const previousUrl = editor.getAttributes('link').href as string | undefined
-    const url = window.prompt('Enter URL', previousUrl || 'https://')
-    if (url === null) return
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run()
-      return
-    }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
-  }
+  const setLink = () => window.dispatchEvent(new CustomEvent('editor:set-link'))
 
-  const addImage = () => {
-    const url = window.prompt('Enter image URL')
-    if (url) editor.chain().focus().setImage({ src: url }).run()
-  }
-
-  const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-  }
-
-  const changeFontSize = (size: string) => {
-    editor.chain().focus().setFontSize(size).run()
-  }
-
-  const adjustFontSize = (direction: 'up' | 'down') => {
-    changeFontSize(stepFontSize(fontSize, direction))
-  }
-
-  const changeFontFamily = (value: string) => {
-    if (value) {
-      editor.chain().focus().setFontFamily(value).run()
+  const handleImageFile = async (file: File) => {
+    if (onImageUploadRef.current) {
+      try {
+        const url = await onImageUploadRef.current(file)
+        editor.chain().focus().setImage({ src: url }).run()
+      } catch {
+        alert('Image upload failed. Save the post first or check Firebase Storage.')
+      }
     } else {
-      editor.chain().focus().unsetFontFamily().run()
+      const url = window.prompt('Enter image URL')
+      if (url) editor.chain().focus().setImage({ src: url }).run()
     }
+  }
+
+  const insertCollapsible = () => {
+    editor.chain().focus().setCollapsible('Section title').run()
+  }
+
+  const insertCallout = (variant: 'note' | 'warning' | 'tip') => {
+    editor.chain().focus().insertContent({
+      type: 'callout',
+      attrs: { variant },
+      content: [{ type: 'paragraph' }],
+    }).run()
   }
 
   return (
     <div className="sticky top-0 z-20 border-b border-neutral-200 bg-neutral-50">
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleImageFile(file)
+          e.target.value = ''
+        }}
+      />
       <div className="flex items-center gap-0.5 overflow-x-auto px-3 py-2 scrollbar-thin">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          title="Undo"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)">
           <IconUndo />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          title="Redo"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo">
           <IconRedo />
         </ToolbarButton>
 
@@ -169,7 +192,7 @@ export default function Toolbar({ editor }: ToolbarProps) {
           value={blockType}
           onChange={(e) => setBlockType(e.target.value)}
           title="Text style"
-          className="h-8 max-w-[7.5rem] shrink-0 rounded-md border-0 bg-transparent px-2 text-sm text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400/40 cursor-pointer"
+          className="h-8 max-w-[7.5rem] shrink-0 rounded-md border-0 bg-transparent px-2 text-sm text-neutral-700 hover:bg-neutral-100 focus:outline-none cursor-pointer"
         >
           <option value="paragraph">Normal text</option>
           <option value="h1">Heading 1</option>
@@ -179,9 +202,12 @@ export default function Toolbar({ editor }: ToolbarProps) {
 
         <select
           value={fontFamily}
-          onChange={(e) => changeFontFamily(e.target.value)}
+          onChange={(e) => {
+            if (e.target.value) editor.chain().focus().setFontFamily(e.target.value).run()
+            else editor.chain().focus().unsetFontFamily().run()
+          }}
           title="Font"
-          className="h-8 max-w-[9rem] shrink-0 rounded-md border border-neutral-200 bg-white px-2 text-sm text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400/40 cursor-pointer"
+          className="h-8 max-w-[9rem] shrink-0 rounded-md border border-neutral-200 bg-white px-2 text-sm text-neutral-700 hover:bg-neutral-50 focus:outline-none cursor-pointer"
           style={{ fontFamily: fontFamily || undefined }}
         >
           {FONT_FAMILIES.map((font) => (
@@ -194,12 +220,12 @@ export default function Toolbar({ editor }: ToolbarProps) {
         <Divider />
 
         <div className="flex shrink-0 items-center rounded-md border border-gray-200 bg-white">
-          <ToolbarButton onClick={() => adjustFontSize('down')} title="Decrease font size">
+          <ToolbarButton onClick={() => editor.chain().focus().setFontSize(stepFontSize(fontSize, 'down')).run()} title="Decrease font size">
             <IconMinus />
           </ToolbarButton>
           <select
             value={fontSize}
-            onChange={(e) => changeFontSize(e.target.value)}
+            onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
             title="Font size"
             className="h-8 w-12 border-0 bg-transparent text-center text-sm text-gray-700 focus:outline-none cursor-pointer"
           >
@@ -207,7 +233,7 @@ export default function Toolbar({ editor }: ToolbarProps) {
               <option key={size} value={size}>{size.replace('px', '')}</option>
             ))}
           </select>
-          <ToolbarButton onClick={() => adjustFontSize('up')} title="Increase font size">
+          <ToolbarButton onClick={() => editor.chain().focus().setFontSize(stepFontSize(fontSize, 'up')).run()} title="Increase font size">
             <IconPlus />
           </ToolbarButton>
         </div>
@@ -216,203 +242,118 @@ export default function Toolbar({ editor }: ToolbarProps) {
 
         <Divider />
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          active={editor.isActive('bold')}
-          title="Bold"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)">
           <IconBold />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={editor.isActive('italic')}
-          title="Italic"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic">
           <IconItalic />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          active={editor.isActive('underline')}
-          title="Underline"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
           <IconUnderline />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          active={editor.isActive('strike')}
-          title="Strikethrough"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
           <IconStrike />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHighlight().run()}
-          active={editor.isActive('highlight')}
-          title="Highlight"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
           <IconHighlight />
         </ToolbarButton>
 
         <Divider />
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          active={editor.isActive({ textAlign: 'left' })}
-          title="Align left"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left">
           <IconAlignLeft />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          active={editor.isActive({ textAlign: 'center' })}
-          title="Align center"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align center">
           <IconAlignCenter />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          active={editor.isActive({ textAlign: 'right' })}
-          title="Align right"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align right">
           <IconAlignRight />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          active={editor.isActive({ textAlign: 'justify' })}
-          title="Justify"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })} title="Justify">
           <IconAlignJustify />
         </ToolbarButton>
 
         <Divider />
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          active={editor.isActive('bulletList')}
-          title="Bullet list"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
           <IconBulletList />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          active={editor.isActive('orderedList')}
-          title="Numbered list"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list">
           <IconOrderedList />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          active={editor.isActive('blockquote')}
-          title="Quote"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Quote">
           <IconQuote />
         </ToolbarButton>
 
         <Divider />
 
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          active={editor.isActive('code')}
-          title="Inline code"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline code">
           <IconCode />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          active={editor.isActive('codeBlock')}
-          title="Code block"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code block">
           <IconCodeBlock />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="Divider"
-        >
+        <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider">
           <IconHr />
         </ToolbarButton>
 
         <Divider />
 
-        <ToolbarButton onClick={setLink} active={editor.isActive('link')} title="Insert link">
+        <ToolbarButton onClick={setLink} active={editor.isActive('link')} title="Link (Ctrl+K)">
           <IconLink />
         </ToolbarButton>
-        <ToolbarButton onClick={addImage} title="Insert image">
+        {references.length > 0 && (
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              const refId = e.target.value
+              if (refId) {
+                editor.chain().focus().insertCitation(refId).run()
+                e.target.value = ''
+              }
+            }}
+            title="Insert citation"
+            className="h-8 max-w-[6.5rem] shrink-0 rounded-md border border-neutral-200 bg-white px-2 text-xs text-neutral-700 hover:bg-neutral-50 focus:outline-none cursor-pointer"
+          >
+            <option value="" disabled>Cite…</option>
+            {references.map((ref, i) => (
+              <option key={ref.id} value={ref.id}>
+                {formatCitationLabel(i + 1)} {ref.title.slice(0, 28)}
+              </option>
+            ))}
+          </select>
+        )}
+        <ToolbarButton onClick={() => imageInputRef.current?.click()} title="Upload image">
           <IconImage />
         </ToolbarButton>
-        <ToolbarButton onClick={insertTable} active={inTable} title="Insert table">
+        <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={inTable} title="Insert table">
           <IconTable />
         </ToolbarButton>
+
+        <Divider />
+
+        <button type="button" onClick={insertCollapsible} title="Collapsible section" className="rounded-md px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">
+          ▸ Collapse
+        </button>
+        <button type="button" onClick={() => insertCallout('note')} title="Note callout" className="rounded-md px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">
+          Note
+        </button>
+        <button type="button" onClick={() => insertCallout('warning')} title="Warning callout" className="rounded-md px-2 py-1 text-xs text-amber-700 hover:bg-amber-50">
+          Warn
+        </button>
+        <button type="button" onClick={() => insertCallout('tip')} title="Tip callout" className="rounded-md px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50">
+          Tip
+        </button>
 
         {inTable && (
           <>
             <Divider />
             <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-md border border-gray-200 bg-white px-1 py-0.5">
               <span className="px-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Table</span>
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().addRowBefore().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Add row above"
-              >
-                + Row ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().addRowAfter().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Add row below"
-              >
-                + Row ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().deleteRow().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Delete current row"
-              >
-                − Row
-              </button>
-              <span className="mx-0.5 h-4 w-px bg-gray-200" />
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().addColumnBefore().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Add column left"
-              >
-                + Col ←
-              </button>
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().addColumnAfter().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Add column right"
-              >
-                + Col →
-              </button>
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().deleteColumn().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Delete current column"
-              >
-                − Col
-              </button>
-              <span className="mx-0.5 h-4 w-px bg-gray-200" />
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-                className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                title="Toggle header row"
-              >
-                Header row
-              </button>
-              <button
-                type="button"
-                onClick={() => editor.chain().focus().deleteTable().run()}
-                className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                title="Delete entire table"
-              >
-                Delete table
-              </button>
+              <button type="button" onClick={() => editor.chain().focus().addRowBefore().run()} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">+ Row ↑</button>
+              <button type="button" onClick={() => editor.chain().focus().addRowAfter().run()} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">+ Row ↓</button>
+              <button type="button" onClick={() => editor.chain().focus().deleteRow().run()} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">− Row</button>
+              <button type="button" onClick={() => editor.chain().focus().deleteTable().run()} className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50">Delete</button>
             </div>
           </>
         )}

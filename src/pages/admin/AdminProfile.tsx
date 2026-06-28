@@ -23,12 +23,15 @@ export default function AdminProfileSettings() {
         github: p.github,
         email: p.email,
         googleScholar: p.googleScholar,
+        username: p.username,
+        contactCtaText: p.contactCtaText,
+        showContactCta: p.showContactCta,
       }))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load profile.'))
       .finally(() => setLoading(false))
   }, [])
 
-  const handleChange = (field: keyof ProfileInput, value: string) => {
+  const handleChange = (field: keyof ProfileInput, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -51,12 +54,14 @@ export default function AdminProfileSettings() {
     { key: 'name', label: 'Full name', placeholder: 'Desmond Nani' },
     { key: 'headline', label: 'Headline', placeholder: 'Engineer · Builder' },
     { key: 'bio', label: 'Bio', placeholder: 'Short introduction for recruiters...' },
+    { key: 'username', label: 'Portfolio username', placeholder: 'desmond — used in /p/desmond' },
     { key: 'location', label: 'Location', placeholder: 'City, Country' },
     { key: 'avatarUrl', label: 'Avatar URL', placeholder: 'https://...' },
     { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...' },
     { key: 'github', label: 'GitHub', placeholder: 'https://github.com/...' },
     { key: 'email', label: 'Email', placeholder: 'nanidesmond01@gmail.com', type: 'email' },
     { key: 'googleScholar', label: 'Google Scholar', placeholder: 'https://scholar.google.com/...' },
+    { key: 'contactCtaText', label: 'Contact CTA text', placeholder: 'Get in touch' },
   ]
 
   return (
@@ -81,7 +86,7 @@ export default function AdminProfileSettings() {
               <span className="text-sm font-medium text-neutral-300">{label}</span>
               {key === 'bio' ? (
                 <textarea
-                  value={form[key]}
+                  value={form[key] as string}
                   onChange={(e) => handleChange(key, e.target.value)}
                   rows={4}
                   placeholder={placeholder}
@@ -90,7 +95,7 @@ export default function AdminProfileSettings() {
               ) : (
                 <input
                   type={type}
-                  value={form[key]}
+                  value={form[key] as string}
                   onChange={(e) => handleChange(key, e.target.value)}
                   placeholder={placeholder}
                   className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-neutral-500 focus:outline-none"
@@ -98,6 +103,24 @@ export default function AdminProfileSettings() {
               )}
             </label>
           ))}
+
+          <label className="flex items-center gap-2 text-sm text-neutral-300">
+            <input
+              type="checkbox"
+              checked={form.showContactCta}
+              onChange={(e) => handleChange('showContactCta', e.target.checked)}
+            />
+            Show contact CTA on portfolio
+          </label>
+
+          {form.username && (
+            <p className="text-sm text-neutral-400">
+              Shareable portfolio URL:{' '}
+              <code className="rounded bg-white/10 px-2 py-0.5 text-neutral-200">
+                {typeof window !== 'undefined' ? `${window.location.origin}/p/${form.username}` : `/p/${form.username}`}
+              </code>
+            </p>
+          )}
 
           <button
             type="submit"

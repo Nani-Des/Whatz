@@ -8,6 +8,9 @@ export interface Profile {
   github: string
   email: string
   googleScholar: string
+  username: string
+  contactCtaText: string
+  showContactCta: boolean
   updatedAt: Date
 }
 
@@ -23,4 +26,7 @@ export const DEFAULT_PROFILE: ProfileInput = {
   github: '',
   email: 'nanidesmond01@gmail.com',
   googleScholar: '',
+  username: 'desmond',
+  contactCtaText: 'Get in touch',
+  showContactCta: true,
 }

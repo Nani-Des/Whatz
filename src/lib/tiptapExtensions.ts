@@ -13,35 +13,53 @@ import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import { FontSize } from './fontSizeExtension'
 import { FontFamily } from './fontFamilyExtension'
+import { Callout } from './calloutExtension'
+import { Collapsible } from './collapsibleExtension'
+import { CodeBlockWithLanguage } from './codeBlockExtension'
+import { SlashCommand } from './slashCommandExtension'
+import { Citation } from './citationExtension'
 
 const sharedKit = {
   heading: { levels: [1, 2, 3] as (1 | 2 | 3)[] },
   link: false as const,
   underline: false as const,
+  codeBlock: false as const,
 }
 
 export const editorExtensions = [
   StarterKit.configure(sharedKit),
+  CodeBlockWithLanguage,
   Underline,
   TextStyle,
   FontSize,
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight.configure({ multicolor: false }),
-  Image.configure({ inline: false, allowBase64: true }),
+  Image.configure({ inline: false, allowBase64: false }),
   Link.configure({ openOnClick: false, autolink: true }),
   Table.configure({ resizable: true }),
   TableRow,
   TableHeader,
   TableCell,
+  Callout,
+  Collapsible,
   Placeholder.configure({
-    placeholder: 'Start writing something amazing...',
+    placeholder: 'Start writing… Type / for commands',
   }),
   CharacterCount,
+  SlashCommand,
 ]
+
+export function createEditorExtensions(getCitationNumber: (refId: string) => number | null) {
+  return [
+    ...editorExtensions,
+    Citation.configure({ getCitationNumber }),
+  ]
+}
 
 export const contentExtensions = [
   StarterKit.configure(sharedKit),
+  CodeBlockWithLanguage,
   Underline,
   TextStyle,
   FontSize,
@@ -54,4 +72,7 @@ export const contentExtensions = [
   TableRow,
   TableHeader,
   TableCell,
+  Callout,
+  Collapsible,
+  Citation.configure({ getCitationNumber: () => null }),
 ]

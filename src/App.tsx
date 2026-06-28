@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { publishDueScheduledPosts } from './services/posts'
 import PrivateRoute from './components/PrivateRoute'
 import Home from './pages/Home'
+import PortfolioPage from './pages/PortfolioPage'
 import PostView from './pages/PostView'
 import AdminLogin from './pages/AdminLogin'
 import EditorPage from './pages/EditorPage'
@@ -19,11 +21,17 @@ function App() {
     return unsubscribe
   }, [init])
 
+  useEffect(() => {
+    publishDueScheduledPosts().catch(() => {})
+  }, [])
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/p/:username" element={<PortfolioPage />} />
         <Route path="/post/:id" element={<PostView />} />
+        <Route path="/post/s/:slug" element={<PostView />} />
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/dashboard" element={<PrivateRoute><AdminOverview /></PrivateRoute>} />
         <Route path="/dashboard/posts" element={<PrivateRoute><AdminPosts /></PrivateRoute>} />

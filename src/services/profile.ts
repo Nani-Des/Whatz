@@ -18,6 +18,9 @@ function mapProfile(data: Record<string, unknown>): Profile {
     github: (data.github as string) ?? '',
     email: (data.email as string) ?? DEFAULT_PROFILE.email,
     googleScholar: (data.googleScholar as string) ?? '',
+    username: (data.username as string) ?? DEFAULT_PROFILE.username,
+    contactCtaText: (data.contactCtaText as string) ?? DEFAULT_PROFILE.contactCtaText,
+    showContactCta: data.showContactCta !== false,
     updatedAt: updatedAt?.toDate?.() ?? new Date(),
   }
 }
