@@ -12,6 +12,7 @@ interface EditorProps {
   references?: PostReference[]
   onSave?: () => void
   onImageUpload?: (file: File) => Promise<string>
+  onVideoUpload?: (file: File) => Promise<string>
 }
 
 export default function Editor({
@@ -21,13 +22,16 @@ export default function Editor({
   references = [],
   onSave,
   onImageUpload,
+  onVideoUpload,
 }: EditorProps) {
   const isInternalUpdate = useRef(false)
   const onSaveRef = useRef(onSave)
   const onImageUploadRef = useRef(onImageUpload)
+  const onVideoUploadRef = useRef(onVideoUpload)
   const referencesRef = useRef(references)
   onSaveRef.current = onSave
   onImageUploadRef.current = onImageUpload
+  onVideoUploadRef.current = onVideoUpload
   referencesRef.current = references
 
   const extensions = useMemo(
@@ -91,10 +95,15 @@ export default function Editor({
       if (!refId || !editor) return
       editor.chain().focus().insertCitation(refId).run()
     }
+    const handleInsertVideo = () => {
+      window.dispatchEvent(new CustomEvent('editor:open-video-picker'))
+    }
     window.addEventListener('editor:insert-image', handleInsertImage)
+    window.addEventListener('editor:insert-video', handleInsertVideo)
     window.addEventListener('editor:insert-citation', handleInsertCitation)
     return () => {
       window.removeEventListener('editor:insert-image', handleInsertImage)
+      window.removeEventListener('editor:insert-video', handleInsertVideo)
       window.removeEventListener('editor:insert-citation', handleInsertCitation)
     }
   }, [editor])
@@ -104,12 +113,13 @@ export default function Editor({
 
   return (
     <div className="editor-surface overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-      <Toolbar editor={editor} postId={postId} references={references} onImageUpload={onImageUpload} />
-      <div className="tiptap-editor-content px-6 py-5 sm:px-12 sm:py-8 min-h-[480px] bg-white">
+      <Toolbar editor={editor} postId={postId} references={references} onImageUpload={onImageUpload} onVideoUpload={onVideoUpload} />
+      <div className="tiptap-editor-content min-h-[360px] bg-white sm:min-h-[480px]">
         <EditorContent editor={editor} />
       </div>
       <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-xs text-neutral-500">
-        <span>{wordCount} words · Ctrl+S save · Ctrl+K link · / commands · cite from references panel</span>
+        <span className="hidden sm:inline">{wordCount} words · Ctrl+S save · Ctrl+K link · / commands</span>
+        <span className="sm:hidden">{wordCount} words</span>
         <span>{charCount} characters</span>
       </div>
     </div>

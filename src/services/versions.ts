@@ -37,13 +37,12 @@ export async function savePostVersion(
       ...snapshot,
       createdAt: serverTimestamp(),
     })
-    // Keep only last 20 versions
     const q = query(versionsRef, orderBy('createdAt', 'desc'))
     const snap = await getDocs(q)
     const toDelete = snap.docs.slice(20)
     await Promise.all(toDelete.map((d) => deleteDoc(d.ref)))
   } catch (error) {
-    throw new Error(getFirestoreErrorMessage(error))
+    console.warn('Version history unavailable:', getFirestoreErrorMessage(error))
   }
 }
 

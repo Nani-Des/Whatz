@@ -33,3 +33,9 @@ export async function uploadEditorImage(postId: string, file: File): Promise<str
   const path = `posts/${postId}/images/${Date.now()}-${safeName}`
   return uploadFile(path, file)
 }
+
+export async function uploadEditorVideo(postId: string, file: File): Promise<string> {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `posts/${postId}/videos/${Date.now()}-${safeName}`
+  return uploadFile(path, file)
+}

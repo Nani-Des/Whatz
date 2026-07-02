@@ -69,9 +69,9 @@ export default function Home({ portfolioUsername }: HomeProps) {
             <button
               type="button"
               onClick={copyPortfolioLink}
-              className="hidden rounded-full border border-neutral-700 px-4 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:border-neutral-500 hover:text-white sm:inline-block"
+              className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:border-neutral-500 hover:text-white sm:px-4"
             >
-              {copied ? 'Link copied!' : 'Copy portfolio link'}
+              {copied ? 'Copied!' : 'Share link'}
             </button>
             <Link to="/admin" className="rounded-full border border-neutral-700 px-4 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:border-neutral-500 hover:text-white">
               Admin

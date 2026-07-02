@@ -86,9 +86,9 @@ export default function ProfileHero({ profile, portfolioUrl }: ProfileHeroProps)
   ].filter((s) => s.href)
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-950 p-8 sm:p-12">
-      <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex gap-5 sm:gap-6">
+    <section className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 p-5 sm:rounded-3xl sm:p-8 lg:p-12">
+      <div className="relative flex flex-col gap-6 sm:gap-8 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:gap-5 lg:gap-6">
           {profile.avatarUrl ? (
             <img
               src={profile.avatarUrl}
@@ -102,8 +102,8 @@ export default function ProfileHero({ profile, portfolioUrl }: ProfileHeroProps)
           )}
           <div>
             <p className="text-sm font-medium uppercase tracking-widest text-neutral-500">Portfolio</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{profile.name}</h1>
-            <p className="mt-2 text-lg text-neutral-300">{profile.headline}</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl lg:text-4xl">{profile.name}</h1>
+            <p className="mt-2 text-base text-neutral-300 sm:text-lg">{profile.headline}</p>
             {profile.location && (
               <p className="mt-2 text-sm text-neutral-500">{profile.location}</p>
             )}

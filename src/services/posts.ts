@@ -17,6 +17,7 @@ import type { Post, PostInput, PostReference, PostStatus } from '../types/post'
 import { cleanFirestoreData } from '../utils/cleanFirestoreData'
 import { getFirestoreErrorMessage } from '../utils/firestoreError'
 import { slugify, uniqueSlug } from '../utils/slug'
+import { mapPostAnimation } from '../types/postAnimation'
 
 const postsCollection = collection(db, 'posts')
 
@@ -61,6 +62,7 @@ function mapDoc(id: string, data: Record<string, unknown>): Post {
     projectRepoUrl: (data.projectRepoUrl as string) ?? '',
     projectTechStack: Array.isArray(data.projectTechStack) ? (data.projectTechStack as string[]) : [],
     scheduledPublishAt: scheduled,
+    animation: mapPostAnimation(data.animation),
     createdAt: timestampToDate(data.createdAt as Timestamp | undefined) ?? new Date(0),
     updatedAt: timestampToDate(data.updatedAt as Timestamp | undefined) ?? new Date(0),
   }
@@ -94,6 +96,7 @@ function buildPostPayload(data: Partial<PostInput>, existingSlugs: string[] = []
   if (data.projectRepoUrl !== undefined) payload.projectRepoUrl = data.projectRepoUrl
   if (data.projectTechStack !== undefined) payload.projectTechStack = data.projectTechStack
   if (data.scheduledPublishAt !== undefined) payload.scheduledPublishAt = data.scheduledPublishAt
+  if (data.animation !== undefined) payload.animation = data.animation
 
   if (data.slug !== undefined) {
     payload.slug = slugify(data.slug)
@@ -175,6 +178,7 @@ export async function createPost(data: PostInput): Promise<string> {
         projectRepoUrl: data.projectRepoUrl ?? '',
         projectTechStack: data.projectTechStack ?? [],
         scheduledPublishAt: data.scheduledPublishAt ?? null,
+        animation: data.animation ?? mapPostAnimation(undefined),
         slug: payload.slug ?? uniqueSlug(data.title || 'untitled', slugs),
         viewCount: 0,
         createdAt: serverTimestamp(),

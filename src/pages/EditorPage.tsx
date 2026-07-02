@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Editor from '../components/Editor'
+import ExcerptField from '../components/ExcerptField'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
 import MediaReferencesPanel from '../components/MediaReferencesPanel'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
+import AnimationSettingsPanel from '../components/AnimationSettingsPanel'
 import { createPost, getPost, updatePost } from '../services/posts'
 import { savePostVersion } from '../services/versions'
-import { uploadEditorImage, uploadPostCover } from '../services/storage'
-import type { PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
+import { uploadEditorImage, uploadEditorVideo, uploadPostCover } from '../services/storage'
+import type { PostAnimationSettings, PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
+import { DEFAULT_POST_ANIMATION } from '../types/post'
 import { slugify } from '../utils/slug'
 import { getExcerpt } from '../utils/excerpt'
 
@@ -17,11 +20,18 @@ function parseTags(input: string): string[] {
   return input.split(',').map((t) => t.trim()).filter(Boolean)
 }
 
+function resolveExcerpt(content: string, excerpt: string, excerptManual: boolean): string {
+  if (excerptManual) return excerpt
+  if (excerpt.trim()) return excerpt.trim()
+  return getExcerpt(content, 160)
+}
+
 function buildPostData(fields: {
   title: string
   content: string
   tagsInput: string
   excerpt: string
+  excerptManual: boolean
   slug: string
   type: PostType
   status: PostStatus
@@ -35,6 +45,7 @@ function buildPostData(fields: {
   projectRepoUrl: string
   projectTechStack: string
   scheduledPublishAt: string
+  animation: PostAnimationSettings
 }): PostInput {
   const scheduled = fields.scheduledPublishAt ? new Date(fields.scheduledPublishAt) : null
   let status = fields.status
@@ -45,7 +56,7 @@ function buildPostData(fields: {
   return {
     title: fields.title,
     content: fields.content,
-    excerpt: fields.excerpt || getExcerpt(fields.content, 160),
+    excerpt: resolveExcerpt(fields.content, fields.excerpt, fields.excerptManual),
     slug: fields.slug || undefined,
     tags: parseTags(fields.tagsInput),
     type: fields.type,
@@ -53,13 +64,14 @@ function buildPostData(fields: {
     pinned: fields.pinned,
     coverImageUrl: fields.coverImageUrl,
     seoTitle: fields.seoTitle || fields.title,
-    seoDescription: fields.seoDescription || fields.excerpt || getExcerpt(fields.content, 160),
+    seoDescription: fields.seoDescription || resolveExcerpt(fields.content, fields.excerpt, fields.excerptManual),
     ogImageUrl: fields.ogImageUrl || fields.coverImageUrl,
     references: fields.references,
     projectDemoUrl: fields.projectDemoUrl,
     projectRepoUrl: fields.projectRepoUrl,
     projectTechStack: parseTags(fields.projectTechStack),
     scheduledPublishAt: scheduled,
+    animation: fields.animation,
   }
 }
 
@@ -72,6 +84,7 @@ export default function EditorPage() {
   const [tagsInput, setTagsInput] = useState('')
   const [content, setContent] = useState('')
   const [excerpt, setExcerpt] = useState('')
+  const [excerptManual, setExcerptManual] = useState(false)
   const [slug, setSlug] = useState('')
   const [type, setType] = useState<PostType>('article')
   const [status, setStatus] = useState<PostStatus>('draft')
@@ -85,6 +98,7 @@ export default function EditorPage() {
   const [projectRepoUrl, setProjectRepoUrl] = useState('')
   const [projectTechStack, setProjectTechStack] = useState('')
   const [scheduledPublishAt, setScheduledPublishAt] = useState('')
+  const [animation, setAnimation] = useState<PostAnimationSettings>({ ...DEFAULT_POST_ANIMATION })
   const [showSeo, setShowSeo] = useState(false)
 
   const [postId, setPostId] = useState<string | null>(isNew ? null : id ?? null)
@@ -94,14 +108,14 @@ export default function EditorPage() {
   const [error, setError] = useState('')
 
   const fieldsRef = useRef({
-    title, tagsInput, content, excerpt, slug, type, status, pinned,
+    title, tagsInput, content, excerpt, excerptManual, slug, type, status, pinned,
     coverImageUrl, seoTitle, seoDescription, ogImageUrl, references,
-    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt,
+    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt, animation,
   })
   fieldsRef.current = {
-    title, tagsInput, content, excerpt, slug, type, status, pinned,
+    title, tagsInput, content, excerpt, excerptManual, slug, type, status, pinned,
     coverImageUrl, seoTitle, seoDescription, ogImageUrl, references,
-    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt,
+    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt, animation,
   }
   const postIdRef = useRef(postId)
   postIdRef.current = postId
@@ -115,6 +129,14 @@ export default function EditorPage() {
         setTagsInput(post.tags.join(', '))
         setContent(post.content)
         setExcerpt(post.excerpt)
+        const autoExcerpt = getExcerpt(post.content, 160)
+        if (post.excerpt === '') {
+          setExcerptManual(true)
+        } else if (post.excerpt && post.excerpt !== autoExcerpt) {
+          setExcerptManual(true)
+        } else {
+          setExcerptManual(false)
+        }
         setSlug(post.slug)
         setType(post.type)
         setStatus(post.status)
@@ -128,6 +150,7 @@ export default function EditorPage() {
         setProjectRepoUrl(post.projectRepoUrl)
         setProjectTechStack(post.projectTechStack.join(', '))
         setScheduledPublishAt(post.scheduledPublishAt ? post.scheduledPublishAt.toISOString().slice(0, 16) : '')
+        setAnimation(post.animation)
         setPostId(post.id)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load post.'))
@@ -188,14 +211,29 @@ export default function EditorPage() {
   titleRef.current = title
   contentRef.current = content
 
+  const syncExcerpt = (next: { excerpt?: string; excerptManual?: boolean }) => {
+    if (next.excerpt !== undefined) setExcerpt(next.excerpt)
+    if (next.excerptManual !== undefined) setExcerptManual(next.excerptManual)
+    fieldsRef.current = {
+      ...fieldsRef.current,
+      excerpt: next.excerpt ?? fieldsRef.current.excerpt,
+      excerptManual: next.excerptManual ?? fieldsRef.current.excerptManual,
+    }
+  }
+
   const handlePublish = async () => {
+    setError('')
     const data = buildPostData({ ...fieldsRef.current, status: 'published', scheduledPublishAt: '' })
     setSaving(true)
     setSaveMessage('Publishing…')
     try {
       if (postId) {
         await updatePost(postId, { ...data, scheduledPublishAt: null })
-        await savePostVersion(postId, { title: data.title, content: data.content, excerpt: data.excerpt ?? '', tags: data.tags })
+        try {
+          await savePostVersion(postId, { title: data.title, content: data.content, excerpt: data.excerpt ?? '', tags: data.tags })
+        } catch {
+          // Version history is optional — don't block publish
+        }
       } else {
         const newId = await createPost(data)
         setPostId(newId)
@@ -240,6 +278,11 @@ export default function EditorPage() {
     return uploadEditorImage(pid, file)
   }
 
+  const handleVideoUpload = async (file: File): Promise<string> => {
+    const pid = await ensurePostId()
+    return uploadEditorVideo(pid, file)
+  }
+
   const handleCoverUpload = async (file: File) => {
     try {
       const pid = await ensurePostId()
@@ -270,32 +313,32 @@ export default function EditorPage() {
   return (
     <div className="min-h-screen bg-neutral-100">
       <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
-          <Link to="/dashboard" className="flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-black">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-4 sm:px-6">
+          <Link to="/dashboard" className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-black">
             <span className="text-lg leading-none">←</span>
             <span className="hidden sm:inline">Dashboard</span>
           </Link>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {saveMessage && <span className="text-xs text-neutral-400">{saveMessage}</span>}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+            {saveMessage && <span className="hidden text-xs text-neutral-400 sm:inline">{saveMessage}</span>}
             {status !== 'draft' && (
-              <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 capitalize">
+              <span className="hidden rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-700 sm:inline">
                 {status}
               </span>
             )}
-            <button type="button" onClick={() => saveDraft(false)} disabled={saving} className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
-              Save draft
+            <button type="button" onClick={() => saveDraft(false)} disabled={saving} className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 sm:px-4 sm:text-sm">
+              Save
             </button>
-            <button type="button" onClick={handleSchedule} disabled={saving || !scheduledPublishAt} className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+            <button type="button" onClick={handleSchedule} disabled={saving || !scheduledPublishAt} className="hidden rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 sm:inline-block">
               Schedule
             </button>
-            <button type="button" onClick={handlePublish} disabled={saving} className="rounded-full bg-black px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50">
+            <button type="button" onClick={handlePublish} disabled={saving} className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 disabled:opacity-50 sm:px-4 sm:text-sm">
               Publish
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_280px]">
+      <main className="mx-auto grid max-w-6xl gap-6 px-3 py-4 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div>
           {error && (
             <div className="mb-4">
@@ -312,9 +355,9 @@ export default function EditorPage() {
                 if (!slug || slug === slugify(title)) setSlug(slugify(e.target.value))
               }}
               placeholder="Title"
-              className="w-full border-0 bg-transparent text-[2rem] font-normal text-black placeholder-neutral-400 focus:outline-none sm:text-[2.25rem] leading-tight tracking-tight"
+              className="w-full border-0 bg-transparent text-[1.65rem] font-normal text-black placeholder-neutral-400 focus:outline-none sm:text-[2.25rem] leading-tight tracking-tight"
             />
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <input
                 type="text"
                 value={tagsInput}
@@ -322,7 +365,8 @@ export default function EditorPage() {
                 placeholder="Tags (comma-separated)"
                 className="min-w-0 flex-1 border-0 bg-transparent text-sm text-neutral-500 placeholder-neutral-400 focus:outline-none"
               />
-              <select value={type} onChange={(e) => setType(e.target.value as PostType)} className="rounded-lg border border-neutral-200 bg-white px-3 py-1 text-sm">
+              <div className="flex flex-wrap items-center gap-3">
+              <select value={type} onChange={(e) => setType(e.target.value as PostType)} className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm">
                 <option value="article">Article</option>
                 <option value="project">Project</option>
               </select>
@@ -330,13 +374,15 @@ export default function EditorPage() {
                 <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
                 Pin to top
               </label>
+              </div>
             </div>
-            <input
-              type="text"
+            <ExcerptField
               value={excerpt}
-              onChange={(e) => setExcerpt(e.target.value)}
-              placeholder="Excerpt (optional — used in cards & SEO)"
-              className="w-full border-0 bg-transparent text-sm text-neutral-500 placeholder-neutral-400 focus:outline-none"
+              content={content}
+              manual={excerptManual}
+              onChange={(value) => syncExcerpt({ excerpt: value, excerptManual: true })}
+              onAutoFill={() => syncExcerpt({ excerpt: getExcerpt(content, 160), excerptManual: false })}
+              onClear={() => syncExcerpt({ excerpt: '', excerptManual: true })}
             />
           </div>
 
@@ -347,6 +393,7 @@ export default function EditorPage() {
             references={references}
             onSave={() => saveDraft(false)}
             onImageUpload={handleImageUpload}
+            onVideoUpload={handleVideoUpload}
           />
         </div>
 
@@ -403,6 +450,8 @@ export default function EditorPage() {
             postId={postId}
             onEnsurePostId={ensurePostId}
           />
+
+          <AnimationSettingsPanel value={animation} onChange={setAnimation} />
 
           <div className="rounded-xl border border-neutral-200 bg-white">
             <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-900">

@@ -8,9 +8,14 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
   { title: 'Heading 1', description: 'Large section heading', icon: 'H1', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
   { title: 'Heading 2', description: 'Medium section heading', icon: 'H2', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
   { title: 'Heading 3', description: 'Small section heading', icon: 'H3', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
-  { title: 'Collapsible', description: 'Expandable section', icon: '▸', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCollapsible('Section title').run() },
+  { title: 'Collapsible', description: 'Expandable section with editable title', icon: '▸', command: ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).run()
+    const title = window.prompt('Section title (shown in the header)', 'Section title')
+    if (title !== null) editor.chain().focus().setCollapsible(title.trim() || 'Section title').run()
+  } },
   { title: 'Table', description: 'Insert a 3×3 table', icon: '⊞', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { title: 'Image', description: 'Upload or link an image', icon: '🖼', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:insert-image')) } },
+  { title: 'Video', description: 'Upload or embed a video', icon: '🎬', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:insert-video')) } },
   { title: 'Divider', description: 'Horizontal rule', icon: '—', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() },
   { title: 'Note callout', description: 'Informational callout', icon: 'ℹ', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent({ type: 'callout', attrs: { variant: 'note' }, content: [{ type: 'paragraph' }] }).run() },
   { title: 'Warning callout', description: 'Warning callout', icon: '⚠', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent({ type: 'callout', attrs: { variant: 'warning' }, content: [{ type: 'paragraph' }] }).run() },

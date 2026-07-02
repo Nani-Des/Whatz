@@ -2,6 +2,11 @@ export type PostStatus = 'draft' | 'published' | 'scheduled'
 export type PostType = 'article' | 'project'
 export type ReferenceType = 'upload' | 'link'
 
+export type { AnimationPreset, PostAnimationSettings } from './postAnimation'
+export { DEFAULT_POST_ANIMATION } from './postAnimation'
+
+import type { PostAnimationSettings } from './postAnimation'
+
 export interface PostReference {
   id: string
   type: ReferenceType
@@ -31,6 +36,7 @@ export interface Post {
   projectRepoUrl: string
   projectTechStack: string[]
   scheduledPublishAt: Date | null
+  animation: PostAnimationSettings
   createdAt: Date
   updatedAt: Date
 }
@@ -53,6 +59,7 @@ export interface PostInput {
   projectRepoUrl?: string
   projectTechStack?: string[]
   scheduledPublishAt?: Date | null
+  animation?: PostAnimationSettings
 }
 
 export interface PostVersion {

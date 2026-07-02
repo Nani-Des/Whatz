@@ -18,6 +18,7 @@ import { Collapsible } from './collapsibleExtension'
 import { CodeBlockWithLanguage } from './codeBlockExtension'
 import { SlashCommand } from './slashCommandExtension'
 import { Citation } from './citationExtension'
+import { Video } from './videoExtension'
 
 const sharedKit = {
   heading: { levels: [1, 2, 3] as (1 | 2 | 3)[] },
@@ -36,6 +37,7 @@ export const editorExtensions = [
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight.configure({ multicolor: false }),
   Image.configure({ inline: false, allowBase64: false }),
+  Video,
   Link.configure({ openOnClick: false, autolink: true }),
   Table.configure({ resizable: true }),
   TableRow,
@@ -67,6 +69,7 @@ export const contentExtensions = [
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight,
   Image,
+  Video,
   Link,
   Table,
   TableRow,

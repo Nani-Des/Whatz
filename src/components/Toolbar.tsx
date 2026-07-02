@@ -9,6 +9,7 @@ import {
   FONT_FAMILIES,
   getCurrentFontFamily,
 } from '../lib/fontFamilyExtension'
+import { insertCollapsibleWithPrompt } from '../lib/collapsibleExtension'
 import {
   IconAlignCenter,
   IconAlignJustify,
@@ -79,13 +80,17 @@ interface ToolbarProps {
   postId?: string | null
   references?: PostReference[]
   onImageUpload?: (file: File) => Promise<string>
+  onVideoUpload?: (file: File) => Promise<string>
 }
 
-export default function Toolbar({ editor, onImageUpload, references = [] }: ToolbarProps) {
+export default function Toolbar({ editor, onImageUpload, onVideoUpload, references = [] }: ToolbarProps) {
   const [, tick] = useState(0)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const onImageUploadRef = useRef(onImageUpload)
+  const onVideoUploadRef = useRef(onVideoUpload)
   onImageUploadRef.current = onImageUpload
+  onVideoUploadRef.current = onVideoUpload
 
   useEffect(() => {
     if (!editor) return
@@ -113,12 +118,15 @@ export default function Toolbar({ editor, onImageUpload, references = [] }: Tool
     }
 
     const openImagePicker = () => imageInputRef.current?.click()
+    const openVideoPicker = () => videoInputRef.current?.click()
 
     window.addEventListener('editor:set-link', setLink)
     window.addEventListener('editor:open-image-picker', openImagePicker)
+    window.addEventListener('editor:open-video-picker', openVideoPicker)
     return () => {
       window.removeEventListener('editor:set-link', setLink)
       window.removeEventListener('editor:open-image-picker', openImagePicker)
+      window.removeEventListener('editor:open-video-picker', openVideoPicker)
     }
   }, [editor])
 
@@ -153,8 +161,22 @@ export default function Toolbar({ editor, onImageUpload, references = [] }: Tool
     }
   }
 
+  const handleVideoFile = async (file: File) => {
+    if (onVideoUploadRef.current) {
+      try {
+        const url = await onVideoUploadRef.current(file)
+        editor.chain().focus().setVideo({ src: url, title: file.name }).run()
+      } catch {
+        alert('Video upload failed. Save the post first or check Firebase Storage.')
+      }
+    } else {
+      const url = window.prompt('Enter video URL')
+      if (url) editor.chain().focus().setVideo({ src: url }).run()
+    }
+  }
+
   const insertCollapsible = () => {
-    editor.chain().focus().setCollapsible('Section title').run()
+    if (editor) insertCollapsibleWithPrompt(editor)
   }
 
   const insertCallout = (variant: 'note' | 'warning' | 'tip') => {
@@ -175,6 +197,17 @@ export default function Toolbar({ editor, onImageUpload, references = [] }: Tool
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) handleImageFile(file)
+          e.target.value = ''
+        }}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleVideoFile(file)
           e.target.value = ''
         }}
       />
@@ -326,14 +359,17 @@ export default function Toolbar({ editor, onImageUpload, references = [] }: Tool
         <ToolbarButton onClick={() => imageInputRef.current?.click()} title="Upload image">
           <IconImage />
         </ToolbarButton>
+        <ToolbarButton onClick={() => videoInputRef.current?.click()} title="Upload video">
+          <span className="text-[11px] font-semibold">▶</span>
+        </ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={inTable} title="Insert table">
           <IconTable />
         </ToolbarButton>
 
         <Divider />
 
-        <button type="button" onClick={insertCollapsible} title="Collapsible section" className="rounded-md px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">
-          ▸ Collapse
+        <button type="button" onClick={insertCollapsible} title="Collapsible section — click title to edit" className="rounded-md px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">
+          ▸ Section
         </button>
         <button type="button" onClick={() => insertCallout('note')} title="Note callout" className="rounded-md px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100">
           Note

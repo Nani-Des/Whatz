@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import PostAmbientBackground from '../components/PostAmbientBackground'
 import { Link, useParams } from 'react-router-dom'
 import PostContent from '../components/PostContent'
 import PostReferences from '../components/PostReferences'
@@ -6,22 +7,17 @@ import FeedbackForm from '../components/FeedbackForm'
 import ShareButton from '../components/ShareButton'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
 import TableOfContents, { extractHeadings, injectHeadingIds } from '../components/TableOfContents'
+import MobileTableOfContents from '../components/MobileTableOfContents'
 import ReadingProgressBar from '../components/ReadingProgressBar'
 import { useSEO } from '../hooks/useSEO'
+import { animationClass } from '../hooks/useScrollReveal'
+import { resolvePostAnimation } from '../types/postAnimation'
 import { getPost, getPostBySlug, incrementPostView } from '../services/posts'
 import { recordVisit } from '../services/analytics'
 import { useAuthStore, isAdminUser } from '../stores/authStore'
 import type { Post } from '../types/post'
 import { formatDate } from '../utils/formatDate'
 import { getReadingTime } from '../utils/readingTime'
-
-function MetaPill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <span className={`rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ${className}`}>
-      {children}
-    </span>
-  )
-}
 
 export default function PostView() {
   const { id, slug } = useParams<{ id?: string; slug?: string }>()
@@ -30,8 +26,20 @@ export default function PostView() {
   const [post, setPost] = useState<Post | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [mediaReady, setMediaReady] = useState(false)
 
   const postKey = slug || id
+
+  useEffect(() => {
+    setMediaReady(false)
+    const schedule = () => setMediaReady(true)
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(schedule, { timeout: 1200 })
+      return () => cancelIdleCallback(id)
+    }
+    const timer = window.setTimeout(schedule, 200)
+    return () => window.clearTimeout(timer)
+  }, [post?.id, post?.coverImageUrl])
 
   useEffect(() => {
     if (!postKey) return
@@ -67,94 +75,93 @@ export default function PostView() {
   })
 
   const readingTime = post ? getReadingTime(post.content) : 0
+  const anim = post ? resolvePostAnimation(post.animation) : null
+
+  const pageClasses = [
+    'post-reader-page',
+    'min-h-screen',
+    anim ? animationClass(anim) : '',
+    anim?.heroEntrance ? 'post-anim-hero' : '',
+    anim?.coverKenBurns ? 'post-anim-cover-drift' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900">
+    <div className={pageClasses}>
+      <PostAmbientBackground enabled={!!anim?.ambientBackground} />
       <ReadingProgressBar />
 
-      <header className="sticky top-0 z-40 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-8">
-          <Link
-            to="/"
-            className="group flex items-center gap-2 text-sm font-medium text-neutral-500 transition-colors hover:text-black"
-          >
-            <span className="transition-transform group-hover:-translate-x-0.5">←</span>
+      <header className="post-reader-nav">
+        <div className="post-reader-nav__inner">
+          <Link to="/" className="post-reader-nav__back">
+            <span aria-hidden="true">←</span>
             <span>Portfolio</span>
           </Link>
-          {post && <ShareButton title={post.title} slug={post.slug} variant="light" />}
+          {post && (
+            <ShareButton
+              title={post.title}
+              slug={post.slug}
+              variant="light"
+              className="post-reader-nav__share"
+            />
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-8 sm:pt-12">
+      <main className="post-reader-main">
         {loading && (
-          <div className="flex items-center justify-center py-24">
-            <p className="text-sm text-neutral-400">Loading article…</p>
+          <div className="post-reader-loading">
+            <p>Loading article…</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-8">
+          <div className="post-reader-error">
             <FirestoreSetupBanner message={error} />
           </div>
         )}
 
         {post && (
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-16 xl:gap-20">
-            <article className="min-w-0">
+          <div className="post-reader-layout">
+            <article className="post-reader-article">
               {post.status === 'draft' && isAdmin && (
-                <div className="mb-8 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+                <div className="post-reader-draft-banner">
                   Draft preview — only visible to you.{' '}
-                  <Link to={`/editor/${post.id}`} className="font-medium text-black underline underline-offset-2 hover:text-neutral-700">
-                    Edit post
-                  </Link>
+                  <Link to={`/editor/${post.id}`}>Edit post</Link>
                 </div>
               )}
 
-              <header className="mb-10 sm:mb-12">
-                <div className="flex flex-wrap items-center gap-2">
-                  <MetaPill className="capitalize">{post.type}</MetaPill>
-                  <span className="text-xs text-neutral-400">·</span>
-                  <time className="text-xs font-medium text-neutral-500">{formatDate(post.updatedAt)}</time>
-                  <span className="text-xs text-neutral-400">·</span>
-                  <span className="text-xs font-medium text-neutral-500">{readingTime} min read</span>
+              <header className="post-reader-hero">
+                <div className="post-reader-meta">
+                  <span className="post-reader-meta__type">{post.type}</span>
+                  <span className="post-reader-meta__dot" aria-hidden="true" />
+                  <time dateTime={post.updatedAt.toISOString()}>{formatDate(post.updatedAt)}</time>
+                  <span className="post-reader-meta__dot" aria-hidden="true" />
+                  <span>{readingTime} min read</span>
                   {post.viewCount > 0 && (
                     <>
-                      <span className="text-xs text-neutral-400">·</span>
-                      <span className="text-xs font-medium text-neutral-500">{post.viewCount} views</span>
+                      <span className="post-reader-meta__dot" aria-hidden="true" />
+                      <span>{post.viewCount} views</span>
                     </>
                   )}
                 </div>
 
-                <h1 className="mt-6 text-[2rem] font-semibold leading-[1.15] tracking-tight text-black sm:text-4xl lg:text-[2.75rem]">
-                  {post.title}
-                </h1>
+                <h1 className="post-title">{post.title}</h1>
 
                 {post.excerpt && (
-                  <p className="mt-5 max-w-2xl text-lg leading-relaxed text-neutral-600 sm:text-xl">
-                    {post.excerpt}
-                  </p>
+                  <p className="post-excerpt">{post.excerpt}</p>
                 )}
 
                 {post.type === 'project' && (post.projectDemoUrl || post.projectRepoUrl) && (
-                  <div className="mt-7 flex flex-wrap gap-3">
+                  <div className="post-reader-actions">
                     {post.projectDemoUrl && (
-                      <a
-                        href={post.projectDemoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
-                      >
-                        View demo
-                        <span aria-hidden="true">→</span>
+                      <a href={post.projectDemoUrl} target="_blank" rel="noopener noreferrer" className="post-reader-btn post-reader-btn--primary">
+                        View demo →
                       </a>
                     )}
                     {post.projectRepoUrl && (
-                      <a
-                        href={post.projectRepoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-2 text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-400 hover:bg-neutral-50"
-                      >
+                      <a href={post.projectRepoUrl} target="_blank" rel="noopener noreferrer" className="post-reader-btn post-reader-btn--secondary">
                         Source code
                       </a>
                     )}
@@ -162,60 +169,63 @@ export default function PostView() {
                 )}
 
                 {(post.projectTechStack.length > 0 || post.tags.length > 0) && (
-                  <div className="mt-6 flex flex-wrap gap-2">
+                  <div className="post-reader-tags">
                     {post.projectTechStack.map((tech) => (
-                      <MetaPill key={tech}>{tech}</MetaPill>
+                      <span key={tech} className="post-reader-tag">{tech}</span>
                     ))}
                     {post.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs font-medium text-neutral-500"
-                      >
-                        {tag}
-                      </span>
+                      <span key={tag} className="post-reader-tag post-reader-tag--outline">{tag}</span>
                     ))}
                   </div>
                 )}
               </header>
 
               {post.coverImageUrl && (
-                <figure className="mb-10 sm:mb-12">
-                  <img
-                    src={post.coverImageUrl}
-                    alt=""
-                    className="w-full rounded-2xl object-cover shadow-[0_8px_30px_rgb(0,0,0,0.06)] ring-1 ring-neutral-200/80 max-h-[28rem]"
-                  />
+                <figure className={`post-reader-cover${anim?.coverKenBurns ? ' post-reader-cover--animated' : ''}`}>
+                  <div className="post-reader-cover__frame">
+                    {mediaReady ? (
+                      <img src={post.coverImageUrl} alt="" loading="lazy" decoding="async" />
+                    ) : (
+                      <div className="post-reader-cover__placeholder" aria-hidden="true" />
+                    )}
+                  </div>
                 </figure>
               )}
 
+              <div className="post-reader-divider" aria-hidden="true" />
+
+              <MobileTableOfContents headings={headings} />
+
               <div className="post-reader">
-                <PostContent html={post.content} references={post.references} onHeadingsReady={handleHeadingsReady} />
+                <PostContent
+                  html={post.content}
+                  references={post.references}
+                  onHeadingsReady={handleHeadingsReady}
+                  scrollReveal={anim?.scrollReveal ?? false}
+                  staggerContent={anim?.staggerContent ?? false}
+                />
               </div>
 
-              <PostReferences references={post.references} />
+              <PostReferences references={post.references} reveal={anim?.revealReferences ?? false} />
 
               {post.status === 'published' && (
-                <div className="mt-16 border-t border-neutral-200 pt-12 sm:mt-20 sm:pt-16">
+                <div className="post-reader-feedback">
                   <FeedbackForm postId={post.id} postTitle={post.title} variant="light" />
                 </div>
               )}
             </article>
 
-            <aside className="hidden lg:block">
-              <div className="sticky top-20 space-y-6">
+            <aside className="post-reader-aside">
+              <div className="post-reader-aside__sticky">
                 {headings.length >= 3 && (
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-5">
+                  <div className="post-reader-aside__card">
                     <TableOfContents headings={headings} variant="light" />
                   </div>
                 )}
-                <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Share</p>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-                    Found this useful? Pass it along.
-                  </p>
-                  <div className="mt-4">
-                    <ShareButton title={post.title} slug={post.slug} variant="light" className="w-full justify-center" />
-                  </div>
+                <div className="post-reader-aside__card post-reader-aside__card--share">
+                  <p className="post-reader-aside__label">Share</p>
+                  <p className="post-reader-aside__hint">Found this useful? Pass it along.</p>
+                  <ShareButton title={post.title} slug={post.slug} variant="light" className="w-full justify-center" />
                 </div>
               </div>
             </aside>
@@ -223,12 +233,10 @@ export default function PostView() {
         )}
       </main>
 
-      <footer className="border-t border-neutral-200 bg-neutral-50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6 sm:px-8">
-          <p className="text-xs text-neutral-400">Whatz</p>
-          <Link to="/" className="text-xs font-medium text-neutral-500 hover:text-black">
-            Back to portfolio
-          </Link>
+      <footer className="post-reader-footer">
+        <div className="post-reader-footer__inner">
+          <span>Whatz</span>
+          <Link to="/">Back to portfolio</Link>
         </div>
       </footer>
     </div>
