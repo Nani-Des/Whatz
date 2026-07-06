@@ -28,14 +28,21 @@ function timestampToDate(value: Timestamp | undefined | null): Date | null {
 
 function mapReferences(raw: unknown): PostReference[] {
   if (!Array.isArray(raw)) return []
-  return raw.map((r) => ({
-    id: (r as PostReference).id ?? crypto.randomUUID(),
-    type: (r as PostReference).type === 'upload' ? 'upload' : 'link',
-    title: (r as PostReference).title ?? '',
-    url: (r as PostReference).url ?? '',
-    fileName: (r as PostReference).fileName,
-    mimeType: (r as PostReference).mimeType,
-  }))
+  return raw.map((r) => {
+    const ref = r as PostReference
+    const type = ref.type === 'upload' ? 'upload' : ref.type === 'post' ? 'post' : 'link'
+    const slug = ref.slug ?? ''
+    return {
+      id: ref.id ?? crypto.randomUUID(),
+      type,
+      title: ref.title ?? '',
+      url: type === 'post' && slug ? `/post/s/${slug}` : (ref.url ?? ''),
+      fileName: ref.fileName,
+      mimeType: ref.mimeType,
+      postId: ref.postId,
+      slug: ref.slug,
+    }
+  })
 }
 
 function mapDoc(id: string, data: Record<string, unknown>): Post {

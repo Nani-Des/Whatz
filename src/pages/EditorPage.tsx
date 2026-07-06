@@ -4,6 +4,7 @@ import Editor from '../components/Editor'
 import ExcerptField from '../components/ExcerptField'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
 import MediaReferencesPanel from '../components/MediaReferencesPanel'
+import PostReferencesPanel from '../components/PostReferencesPanel'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import AnimationSettingsPanel from '../components/AnimationSettingsPanel'
 import { createPost, getPost, updatePost } from '../services/posts'
@@ -102,6 +103,7 @@ export default function EditorPage() {
   const [showSeo, setShowSeo] = useState(false)
 
   const [postId, setPostId] = useState<string | null>(isNew ? null : id ?? null)
+  const postRefsPanelRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -119,6 +121,14 @@ export default function EditorPage() {
   }
   const postIdRef = useRef(postId)
   postIdRef.current = postId
+
+  useEffect(() => {
+    const scrollToPostPicker = () => {
+      postRefsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    window.addEventListener('editor:pick-post-link', scrollToPostPicker)
+    return () => window.removeEventListener('editor:pick-post-link', scrollToPostPicker)
+  }, [])
 
   useEffect(() => {
     if (isNew) return
@@ -283,6 +293,14 @@ export default function EditorPage() {
     return uploadEditorVideo(pid, file)
   }
 
+  const handleInsertPostLink = (post: { id: string; title: string; slug: string }) => {
+    window.dispatchEvent(
+      new CustomEvent('editor:insert-post-link', {
+        detail: { postId: post.id, slug: post.slug, title: post.title },
+      }),
+    )
+  }
+
   const handleCoverUpload = async (file: File) => {
     try {
       const pid = await ensurePostId()
@@ -338,8 +356,8 @@ export default function EditorPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-6 px-3 py-4 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div>
+      <main className="editor-page-main mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-8">
+        <div className="editor-page-main__content">
           {error && (
             <div className="mb-4">
               <FirestoreSetupBanner message={error} />
@@ -397,7 +415,9 @@ export default function EditorPage() {
           />
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+        <div className="editor-page-main__divider" aria-hidden="true" />
+
+        <aside className="editor-page-main__aside space-y-4 lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-xl border border-neutral-200 bg-white p-4">
             <label className="block text-sm font-semibold text-neutral-900">URL slug</label>
             <input
@@ -443,6 +463,15 @@ export default function EditorPage() {
               <input type="text" value={projectTechStack} onChange={(e) => setProjectTechStack(e.target.value)} placeholder="Tech stack (comma-separated)" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />
             </div>
           )}
+
+          <div ref={postRefsPanelRef}>
+            <PostReferencesPanel
+              currentPostId={postId}
+              references={references}
+              onChange={setReferences}
+              onInsertInline={handleInsertPostLink}
+            />
+          </div>
 
           <MediaReferencesPanel
             references={references}

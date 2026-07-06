@@ -362,6 +362,12 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         <ToolbarButton onClick={() => videoInputRef.current?.click()} title="Upload video">
           <span className="text-[11px] font-semibold">▶</span>
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => window.dispatchEvent(new CustomEvent('editor:pick-post-link'))}
+          title="Link to another post"
+        >
+          <span className="text-[11px] font-semibold">📄</span>
+        </ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={inTable} title="Insert table">
           <IconTable />
         </ToolbarButton>

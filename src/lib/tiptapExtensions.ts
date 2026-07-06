@@ -19,6 +19,7 @@ import { CodeBlockWithLanguage } from './codeBlockExtension'
 import { SlashCommand } from './slashCommandExtension'
 import { Citation } from './citationExtension'
 import { Video } from './videoExtension'
+import { PostLink } from './postLinkExtension'
 
 const sharedKit = {
   heading: { levels: [1, 2, 3] as (1 | 2 | 3)[] },
@@ -38,6 +39,7 @@ export const editorExtensions = [
   Highlight.configure({ multicolor: false }),
   Image.configure({ inline: false, allowBase64: false }),
   Video,
+  PostLink,
   Link.configure({ openOnClick: false, autolink: true }),
   Table.configure({ resizable: true }),
   TableRow,
@@ -70,6 +72,7 @@ export const contentExtensions = [
   Highlight,
   Image,
   Video,
+  PostLink,
   Link,
   Table,
   TableRow,

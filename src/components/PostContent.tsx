@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -49,6 +50,16 @@ function hydrateCitations(container: HTMLElement, references: PostReference[]) {
   })
 }
 
+function handlePostLinkClick(e: Event, container: HTMLElement, navigate: (path: string) => void) {
+  const link = (e.target as HTMLElement).closest('a.post-inline-link, a[data-type="post-link"]')
+  if (!link || !container.contains(link)) return
+
+  const href = link.getAttribute('href')
+  if (!href?.startsWith('/post/')) return
+
+  e.preventDefault()
+  navigate(href)
+}
 function handleCitationClick(e: Event, container: HTMLElement) {
   const link = (e.target as HTMLElement).closest('a.citation-link, sup[data-type="citation"] a')
   if (!link || !container.contains(link)) return
@@ -73,6 +84,7 @@ export default function PostContent({
   staggerContent = false,
 }: PostContentProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
   const lazyHtml = useMemo(() => prepareLazyMediaHtml(html), [html])
 
   useScrollReveal(ref, scrollReveal, staggerContent, [lazyHtml])
@@ -88,7 +100,10 @@ export default function PostContent({
     hydrateCitations(el, references)
     onHeadingsReady?.(el)
 
-    const onClick = (e: Event) => handleCitationClick(e, el)
+    const onClick = (e: Event) => {
+      handleCitationClick(e, el)
+      handlePostLinkClick(e, el, navigate)
+    }
     el.addEventListener('click', onClick)
 
     const cleanupMedia = hydrateLazyMedia(el)
@@ -97,7 +112,7 @@ export default function PostContent({
       el.removeEventListener('click', onClick)
       cleanupMedia()
     }
-  }, [lazyHtml, references, onHeadingsReady])
+  }, [lazyHtml, references, onHeadingsReady, navigate])
 
   return (
     <div

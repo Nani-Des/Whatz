@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import Toolbar from './Toolbar'
 import { createEditorExtensions } from '../lib/tiptapExtensions'
+import { DEFAULT_FONT_SIZE } from '../lib/fontSizeExtension'
 import type { PostReference } from '../types/post'
 import { createCitationNumberResolver } from '../utils/citations'
 
@@ -46,6 +47,11 @@ export default function Editor({
     onUpdate: ({ editor: ed }) => {
       isInternalUpdate.current = true
       onChange(ed.getHTML())
+    },
+    onCreate: ({ editor: ed }) => {
+      if (ed.isEmpty) {
+        ed.commands.setFontSize(DEFAULT_FONT_SIZE)
+      }
     },
     editorProps: {
       attributes: {
@@ -98,12 +104,24 @@ export default function Editor({
     const handleInsertVideo = () => {
       window.dispatchEvent(new CustomEvent('editor:open-video-picker'))
     }
+    const handleInsertPostLink = (e: Event) => {
+      const detail = (e as CustomEvent<{ postId: string; slug: string; title: string }>).detail
+      if (!detail?.postId || !editor) return
+      editor.chain().focus().setPostLink(detail).run()
+    }
+    const handlePickPostLink = () => {
+      window.dispatchEvent(new CustomEvent('editor:open-post-picker', { detail: { mode: 'inline' } }))
+    }
     window.addEventListener('editor:insert-image', handleInsertImage)
     window.addEventListener('editor:insert-video', handleInsertVideo)
+    window.addEventListener('editor:insert-post-link', handleInsertPostLink)
+    window.addEventListener('editor:pick-post-link', handlePickPostLink)
     window.addEventListener('editor:insert-citation', handleInsertCitation)
     return () => {
       window.removeEventListener('editor:insert-image', handleInsertImage)
       window.removeEventListener('editor:insert-video', handleInsertVideo)
+      window.removeEventListener('editor:insert-post-link', handleInsertPostLink)
+      window.removeEventListener('editor:pick-post-link', handlePickPostLink)
       window.removeEventListener('editor:insert-citation', handleInsertCitation)
     }
   }, [editor])

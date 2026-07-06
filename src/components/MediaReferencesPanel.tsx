@@ -134,7 +134,9 @@ export default function MediaReferencesPanel({
                 <span className="shrink-0 text-xs font-semibold text-neutral-500">
                   {formatCitationLabel(index)}
                 </span>
-                <span className="text-xs text-neutral-400">{ref.type === 'upload' ? '📎' : '🔗'}</span>
+                <span className="text-xs text-neutral-400">
+                  {ref.type === 'upload' ? '📎' : ref.type === 'post' ? '📄' : '🔗'}
+                </span>
                 <a href={ref.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-sm text-neutral-800 hover:underline">
                   {ref.title}
                 </a>

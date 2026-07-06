@@ -12,6 +12,8 @@ export const FONT_SIZES = [
   '36px',
 ] as const
 
+export const DEFAULT_FONT_SIZE = '12px'
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     fontSize: {
@@ -64,12 +66,12 @@ export const FontSize = Extension.create({
 
 export function getCurrentFontSize(editor: { getAttributes: (name: string) => Record<string, unknown> }): string {
   const size = editor.getAttributes('textStyle').fontSize as string | undefined
-  return size || '16px'
+  return size || DEFAULT_FONT_SIZE
 }
 
 export function stepFontSize(current: string, direction: 'up' | 'down'): string {
   const idx = FONT_SIZES.indexOf(current as typeof FONT_SIZES[number])
-  const baseIdx = idx >= 0 ? idx : FONT_SIZES.indexOf('16px')
+  const baseIdx = idx >= 0 ? idx : FONT_SIZES.indexOf(DEFAULT_FONT_SIZE)
   if (direction === 'up') {
     return FONT_SIZES[Math.min(baseIdx + 1, FONT_SIZES.length - 1)]
   }

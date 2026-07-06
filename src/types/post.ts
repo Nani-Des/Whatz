@@ -1,6 +1,6 @@
 export type PostStatus = 'draft' | 'published' | 'scheduled'
 export type PostType = 'article' | 'project'
-export type ReferenceType = 'upload' | 'link'
+export type ReferenceType = 'upload' | 'link' | 'post'
 
 export type { AnimationPreset, PostAnimationSettings } from './postAnimation'
 export { DEFAULT_POST_ANIMATION } from './postAnimation'
@@ -14,6 +14,9 @@ export interface PostReference {
   url: string
   fileName?: string
   mimeType?: string
+  /** Set when type is `post` */
+  postId?: string
+  slug?: string
 }
 
 export interface Post {
