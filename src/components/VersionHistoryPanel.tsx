@@ -64,7 +64,7 @@ export default function VersionHistoryPanel({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Past snapshots</p>
           {loading && <p className="text-xs text-neutral-500">Loading snapshots…</p>}
           {!loading && versions.length === 0 && (
-            <p className="text-xs text-neutral-500">No snapshots yet. A snapshot is saved each time you save a draft.</p>
+            <p className="text-xs text-neutral-500">No snapshots yet. One is saved when you click Save or leave the editor.</p>
           )}
           <ul className="space-y-2">
             {versions.map((v) => (

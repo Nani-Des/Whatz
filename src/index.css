@@ -627,16 +627,16 @@
 
   .post-content--article {
     font-family: var(--font-body);
-    font-size: 1.0625rem;
-    line-height: 1.82;
+    font-size: 0.875rem;
+    line-height: 1.75;
     color: #262626;
     font-feature-settings: 'kern' 1, 'liga' 1;
   }
 
   @media (min-width: 640px) {
     .post-content--article {
-      font-size: 1.125rem;
-      line-height: 1.85;
+      font-size: 0.9375rem;
+      line-height: 1.78;
     }
   }
 
@@ -656,14 +656,14 @@
   .post-content--article h2 {
     margin-top: 2.5rem;
     margin-bottom: 0.875rem;
-    font-size: 1.625rem;
+    font-size: 1.375rem;
     line-height: 1.2;
   }
 
   .post-content--article h3 {
     margin-top: 2rem;
     margin-bottom: 0.625rem;
-    font-size: 1.25rem;
+    font-size: 1.0625rem;
     line-height: 1.3;
   }
 

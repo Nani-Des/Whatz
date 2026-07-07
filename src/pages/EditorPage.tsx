@@ -17,6 +17,21 @@ import { getExcerpt } from '../utils/excerpt'
 
 const AUTOSAVE_INTERVAL = 30000
 
+type VersionSnapshot = { title: string; content: string; excerpt: string; tags: string[] }
+
+function versionFingerprint(snapshot: VersionSnapshot): string {
+  return `${snapshot.title}\0${snapshot.content}\0${snapshot.excerpt}\0${snapshot.tags.join('\t')}`
+}
+
+function toVersionSnapshot(data: PostInput): VersionSnapshot {
+  return {
+    title: data.title,
+    content: data.content,
+    excerpt: data.excerpt ?? '',
+    tags: data.tags,
+  }
+}
+
 function parseTags(input: string): string[] {
   return input.split(',').map((t) => t.trim()).filter(Boolean)
 }
@@ -123,6 +138,23 @@ export default function EditorPage() {
   }
   const postIdRef = useRef(postId)
   postIdRef.current = postId
+  const lastVersionFingerprintRef = useRef<string | null>(null)
+  const saveExitSnapshotRef = useRef<() => void>(() => {})
+
+  const saveVersionSnapshot = useCallback(async (currentId: string, data: PostInput, force = false) => {
+    const snapshot = toVersionSnapshot(data)
+    const fingerprint = versionFingerprint(snapshot)
+    if (!force && fingerprint === lastVersionFingerprintRef.current) return
+    await savePostVersion(currentId, snapshot)
+    lastVersionFingerprintRef.current = fingerprint
+  }, [])
+
+  saveExitSnapshotRef.current = () => {
+    const currentId = postIdRef.current
+    if (!currentId) return
+    const data = buildPostData({ ...fieldsRef.current, status: fieldsRef.current.status })
+    void saveVersionSnapshot(currentId, data).catch(() => {})
+  }
 
   const applyPost = useCallback((post: Post) => {
     setTitle(post.title)
@@ -183,6 +215,13 @@ export default function EditorPage() {
           return
         }
         applyPost(post)
+        lastVersionFingerprintRef.current = versionFingerprint(toVersionSnapshot({
+          title: post.title,
+          content: post.content,
+          excerpt: post.excerpt,
+          tags: post.tags,
+          status: post.status,
+        }))
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load post.'))
       .finally(() => setLoading(false))
@@ -200,7 +239,9 @@ export default function EditorPage() {
     return newId
   }, [navigate, markSkipLoad])
 
-  const saveDraft = useCallback(async (silent = false) => {
+  const saveDraft = useCallback(async (options: { silent?: boolean; snapshot?: boolean } = {}) => {
+    const silent = options.silent ?? false
+    const snapshot = options.snapshot ?? !silent
     const data = buildPostData({ ...fieldsRef.current, status: 'draft' })
     setSaving(true)
     if (!silent) setSaveMessage('Saving…')
@@ -209,12 +250,9 @@ export default function EditorPage() {
       let currentId = postIdRef.current
       if (currentId) {
         await updatePost(currentId, data)
-        await savePostVersion(currentId, {
-          title: data.title,
-          content: data.content,
-          excerpt: data.excerpt ?? '',
-          tags: data.tags,
-        })
+        if (snapshot) {
+          await saveVersionSnapshot(currentId, data, true)
+        }
         setLastSavedAt(new Date())
       } else {
         currentId = await createPost(data)
@@ -222,6 +260,9 @@ export default function EditorPage() {
         postIdRef.current = currentId
         markSkipLoad(currentId)
         setLastSavedAt(new Date())
+        if (snapshot) {
+          await saveVersionSnapshot(currentId, data, true)
+        }
         if (!silent) navigate(`/editor/${currentId}`, { replace: true })
       }
       setStatus(data.status === 'scheduled' ? 'scheduled' : 'draft')
@@ -234,14 +275,23 @@ export default function EditorPage() {
     } finally {
       setSaving(false)
     }
-  }, [navigate, markSkipLoad])
+  }, [navigate, markSkipLoad, saveVersionSnapshot])
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (titleRef.current || contentRef.current) saveDraft(true)
+      if (titleRef.current || contentRef.current) saveDraft({ silent: true, snapshot: false })
     }, AUTOSAVE_INTERVAL)
     return () => clearInterval(interval)
   }, [saveDraft])
+
+  useEffect(() => {
+    const onPageHide = () => saveExitSnapshotRef.current()
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      saveExitSnapshotRef.current()
+    }
+  }, [])
 
   const titleRef = useRef(title)
   const contentRef = useRef(content)
@@ -266,11 +316,6 @@ export default function EditorPage() {
     try {
       if (postId) {
         await updatePost(postId, { ...data, scheduledPublishAt: null })
-        try {
-          await savePostVersion(postId, { title: data.title, content: data.content, excerpt: data.excerpt ?? '', tags: data.tags })
-        } catch {
-          // Version history is optional — don't block publish
-        }
       } else {
         const newId = await createPost(data)
         setPostId(newId)
@@ -398,7 +443,7 @@ export default function EditorPage() {
                 {status}
               </span>
             )}
-            <button type="button" onClick={() => saveDraft(false)} disabled={saving} className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 sm:px-4 sm:text-sm">
+            <button type="button" onClick={() => saveDraft({ silent: false, snapshot: true })} disabled={saving} className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 sm:px-4 sm:text-sm">
               Save
             </button>
             <button type="button" onClick={handleSchedule} disabled={saving || !scheduledPublishAt} className="hidden rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 sm:inline-block">
@@ -464,7 +509,7 @@ export default function EditorPage() {
             onChange={setContent}
             postId={postId}
             references={references}
-            onSave={() => saveDraft(false)}
+            onSave={() => saveDraft({ silent: false, snapshot: true })}
             onImageUpload={handleImageUpload}
             onVideoUpload={handleVideoUpload}
           />
