@@ -37,7 +37,7 @@ export async function savePostVersion(
       ...snapshot,
       createdAt: serverTimestamp(),
     })
-    const q = query(versionsRef, orderBy('createdAt', 'desc'))
+    const q = query(versionsRef, orderBy('createdAt', 'desc'), limit(25))
     const snap = await getDocs(q)
     const toDelete = snap.docs.slice(20)
     await Promise.all(toDelete.map((d) => deleteDoc(d.ref)))

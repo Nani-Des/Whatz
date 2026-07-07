@@ -5,6 +5,7 @@ import { createEditorExtensions } from '../lib/tiptapExtensions'
 import { DEFAULT_FONT_SIZE } from '../lib/fontSizeExtension'
 import type { PostReference } from '../types/post'
 import { createCitationNumberResolver } from '../utils/citations'
+import { deferEditorTask } from '../utils/deferEditorTask'
 
 interface EditorProps {
   content: string
@@ -30,15 +31,16 @@ export default function Editor({
   const onImageUploadRef = useRef(onImageUpload)
   const onVideoUploadRef = useRef(onVideoUpload)
   const referencesRef = useRef(references)
+  const getCitationNumberRef = useRef<(refId: string) => number | null>(() => null)
   onSaveRef.current = onSave
   onImageUploadRef.current = onImageUpload
   onVideoUploadRef.current = onVideoUpload
   referencesRef.current = references
+  getCitationNumberRef.current = createCitationNumberResolver(references)
 
   const extensions = useMemo(
-    () => createEditorExtensions(createCitationNumberResolver(references)),
-    // Re-resolve citation numbers when reference list changes
-    [references],
+    () => createEditorExtensions((refId) => getCitationNumberRef.current(refId)),
+    [],
   )
 
   const editor = useEditor({
@@ -49,9 +51,10 @@ export default function Editor({
       onChange(ed.getHTML())
     },
     onCreate: ({ editor: ed }) => {
-      if (ed.isEmpty) {
+      deferEditorTask(() => {
+        if (ed.isDestroyed || !ed.isEmpty) return
         ed.commands.setFontSize(DEFAULT_FONT_SIZE)
-      }
+      })
     },
     editorProps: {
       attributes: {
@@ -75,11 +78,15 @@ export default function Editor({
 
   useEffect(() => {
     if (!editor) return
+    getCitationNumberRef.current = createCitationNumberResolver(referencesRef.current)
     const citation = editor.extensionManager.extensions.find((e) => e.name === 'citation')
     if (citation) {
-      citation.options.getCitationNumber = createCitationNumberResolver(referencesRef.current)
-      editor.view.dispatch(editor.state.tr)
+      citation.options.getCitationNumber = (refId: string) => getCitationNumberRef.current(refId)
     }
+    deferEditorTask(() => {
+      if (editor.isDestroyed) return
+      editor.view.dispatch(editor.state.tr)
+    })
   }, [references, editor])
 
   useEffect(() => {
@@ -87,9 +94,13 @@ export default function Editor({
       isInternalUpdate.current = false
       return
     }
-    if (editor.getHTML() !== content) {
-      editor.commands.setContent(content)
-    }
+    if (editor.getHTML() === content) return
+
+    deferEditorTask(() => {
+      if (editor.isDestroyed || editor.getHTML() === content) return
+      isInternalUpdate.current = true
+      editor.commands.setContent(content, { emitUpdate: false })
+    })
   }, [content, editor])
 
   useEffect(() => {

@@ -7,10 +7,10 @@ import MediaReferencesPanel from '../components/MediaReferencesPanel'
 import PostReferencesPanel from '../components/PostReferencesPanel'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import AnimationSettingsPanel from '../components/AnimationSettingsPanel'
-import { createPost, getPost, updatePost } from '../services/posts'
+import { createPost, getPostForEdit, updatePost } from '../services/posts'
 import { savePostVersion } from '../services/versions'
 import { uploadEditorImage, uploadEditorVideo, uploadPostCover } from '../services/storage'
-import type { PostAnimationSettings, PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
+import type { Post, PostAnimationSettings, PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
 import { DEFAULT_POST_ANIMATION } from '../types/post'
 import { slugify } from '../utils/slug'
 import { getExcerpt } from '../utils/excerpt'
@@ -104,6 +104,8 @@ export default function EditorPage() {
 
   const [postId, setPostId] = useState<string | null>(isNew ? null : id ?? null)
   const postRefsPanelRef = useRef<HTMLDivElement>(null)
+  const skipLoadForPostIdRef = useRef<string | null>(null)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -122,6 +124,41 @@ export default function EditorPage() {
   const postIdRef = useRef(postId)
   postIdRef.current = postId
 
+  const applyPost = useCallback((post: Post) => {
+    setTitle(post.title)
+    setTagsInput(post.tags.join(', '))
+    setContent(post.content)
+    setExcerpt(post.excerpt)
+    const autoExcerpt = getExcerpt(post.content, 160)
+    if (post.excerpt === '') {
+      setExcerptManual(true)
+    } else if (post.excerpt && post.excerpt !== autoExcerpt) {
+      setExcerptManual(true)
+    } else {
+      setExcerptManual(false)
+    }
+    setSlug(post.slug)
+    setType(post.type)
+    setStatus(post.status)
+    setPinned(post.pinned)
+    setCoverImageUrl(post.coverImageUrl)
+    setSeoTitle(post.seoTitle)
+    setSeoDescription(post.seoDescription)
+    setOgImageUrl(post.ogImageUrl)
+    setReferences(post.references)
+    setProjectDemoUrl(post.projectDemoUrl)
+    setProjectRepoUrl(post.projectRepoUrl)
+    setProjectTechStack(post.projectTechStack.join(', '))
+    setScheduledPublishAt(post.scheduledPublishAt ? post.scheduledPublishAt.toISOString().slice(0, 16) : '')
+    setAnimation(post.animation)
+    setPostId(post.id)
+    setLastSavedAt(post.updatedAt)
+  }, [])
+
+  const markSkipLoad = useCallback((pid: string) => {
+    skipLoadForPostIdRef.current = pid
+  }, [])
+
   useEffect(() => {
     const scrollToPostPicker = () => {
       postRefsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -132,40 +169,24 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (isNew) return
-    getPost(id!)
+    if (skipLoadForPostIdRef.current === id) {
+      skipLoadForPostIdRef.current = null
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError('')
+    getPostForEdit(id!)
       .then((post) => {
-        if (!post) { setError('Post not found.'); return }
-        setTitle(post.title)
-        setTagsInput(post.tags.join(', '))
-        setContent(post.content)
-        setExcerpt(post.excerpt)
-        const autoExcerpt = getExcerpt(post.content, 160)
-        if (post.excerpt === '') {
-          setExcerptManual(true)
-        } else if (post.excerpt && post.excerpt !== autoExcerpt) {
-          setExcerptManual(true)
-        } else {
-          setExcerptManual(false)
+        if (!post) {
+          setError('Post not found.')
+          return
         }
-        setSlug(post.slug)
-        setType(post.type)
-        setStatus(post.status)
-        setPinned(post.pinned)
-        setCoverImageUrl(post.coverImageUrl)
-        setSeoTitle(post.seoTitle)
-        setSeoDescription(post.seoDescription)
-        setOgImageUrl(post.ogImageUrl)
-        setReferences(post.references)
-        setProjectDemoUrl(post.projectDemoUrl)
-        setProjectRepoUrl(post.projectRepoUrl)
-        setProjectTechStack(post.projectTechStack.join(', '))
-        setScheduledPublishAt(post.scheduledPublishAt ? post.scheduledPublishAt.toISOString().slice(0, 16) : '')
-        setAnimation(post.animation)
-        setPostId(post.id)
+        applyPost(post)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load post.'))
       .finally(() => setLoading(false))
-  }, [id, isNew])
+  }, [id, isNew, applyPost])
 
   const ensurePostId = useCallback(async (): Promise<string> => {
     if (postIdRef.current) return postIdRef.current
@@ -173,9 +194,11 @@ export default function EditorPage() {
     const newId = await createPost(data)
     setPostId(newId)
     postIdRef.current = newId
+    markSkipLoad(newId)
+    setLastSavedAt(new Date())
     navigate(`/editor/${newId}`, { replace: true })
     return newId
-  }, [navigate])
+  }, [navigate, markSkipLoad])
 
   const saveDraft = useCallback(async (silent = false) => {
     const data = buildPostData({ ...fieldsRef.current, status: 'draft' })
@@ -192,14 +215,18 @@ export default function EditorPage() {
           excerpt: data.excerpt ?? '',
           tags: data.tags,
         })
+        setLastSavedAt(new Date())
       } else {
         currentId = await createPost(data)
         setPostId(currentId)
         postIdRef.current = currentId
+        markSkipLoad(currentId)
+        setLastSavedAt(new Date())
         if (!silent) navigate(`/editor/${currentId}`, { replace: true })
       }
       setStatus(data.status === 'scheduled' ? 'scheduled' : 'draft')
       setSaveMessage('Draft saved')
+      setLastSavedAt(new Date())
       setTimeout(() => setSaveMessage(''), 2000)
     } catch (err) {
       setSaveMessage('')
@@ -207,7 +234,7 @@ export default function EditorPage() {
     } finally {
       setSaving(false)
     }
-  }, [navigate])
+  }, [navigate, markSkipLoad])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -271,6 +298,7 @@ export default function EditorPage() {
       else {
         const newId = await createPost(data)
         setPostId(newId)
+        markSkipLoad(newId)
         navigate(`/editor/${newId}`, { replace: true })
       }
       setStatus('scheduled')
@@ -312,8 +340,35 @@ export default function EditorPage() {
     }
   }
 
+  const handleReloadCurrent = async () => {
+    if (!postId) return
+    if (!window.confirm('Reload the current saved version from the server? Unsaved editor changes will be lost.')) return
+    setError('')
+    setLoading(true)
+    try {
+      const post = await getPostForEdit(postId)
+      if (!post) {
+        setError('Post not found on the server.')
+        return
+      }
+      applyPost(post)
+      setSaveMessage('Reloaded current saved version')
+      setTimeout(() => setSaveMessage(''), 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reload post.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleRestoreVersion = (version: PostVersion) => {
-    if (!window.confirm(`Restore version from ${version.createdAt.toLocaleString()}?`)) return
+    if (
+      !window.confirm(
+        `Restore snapshot from ${version.createdAt.toLocaleString()}?\n\nThis only updates the editor. Click Save to write it to the live post, or use "Reload current" to discard.`,
+      )
+    ) {
+      return
+    }
     setTitle(version.title)
     setContent(version.content)
     setExcerpt(version.excerpt)
@@ -496,7 +551,12 @@ export default function EditorPage() {
             )}
           </div>
 
-          <VersionHistoryPanel postId={postId} onRestore={handleRestoreVersion} />
+          <VersionHistoryPanel
+            postId={postId}
+            currentSavedAt={lastSavedAt}
+            onRestore={handleRestoreVersion}
+            onReloadCurrent={handleReloadCurrent}
+          />
         </aside>
       </main>
     </div>

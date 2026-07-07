@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Post, PostReference } from '../types/post'
-import { getAllPosts } from '../services/posts'
+import { getPublishedPosts } from '../services/posts'
 import { buildPostReference } from '../utils/postLinks'
 
 export type PostPickMode = 'reference' | 'inline'
@@ -29,7 +29,7 @@ export default function PostReferencesPanel({
   const [highlightId, setHighlightId] = useState<string | null>(null)
 
   useEffect(() => {
-    getAllPosts()
+    getPublishedPosts()
       .then(setPosts)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load posts.'))
       .finally(() => setLoading(false))
@@ -80,7 +80,7 @@ export default function PostReferencesPanel({
     <div className="rounded-xl border border-neutral-200 bg-white p-4">
       <h3 className="text-sm font-semibold text-neutral-900">Refer other posts</h3>
       <p className="mt-1 text-xs text-neutral-500">
-        Link to articles or projects from your portfolio — add to the references list or insert an inline link.
+        Link to published articles or projects — add to the references list or insert an inline link.
       </p>
 
       <input
@@ -95,7 +95,9 @@ export default function PostReferencesPanel({
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
 
       {!loading && !error && availablePosts.length === 0 && (
-        <p className="mt-3 text-xs text-neutral-400">No matching posts.</p>
+        <p className="mt-3 text-xs text-neutral-400">
+          {query.trim() ? 'No published posts match your search.' : 'No published posts yet.'}
+        </p>
       )}
 
       {availablePosts.length > 0 && (
@@ -115,7 +117,7 @@ export default function PostReferencesPanel({
                     {post.title}
                   </p>
                   <p className={`mt-0.5 text-[10px] uppercase tracking-wide ${highlightId === post.id ? 'text-neutral-300' : 'text-neutral-400'}`}>
-                    {post.type} · {post.status}
+                    {post.type}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col gap-1">

@@ -5,10 +5,17 @@ import { formatDate } from '../utils/formatDate'
 
 interface VersionHistoryPanelProps {
   postId: string | null
+  currentSavedAt: Date | null
   onRestore: (version: PostVersion) => void
+  onReloadCurrent: () => void
 }
 
-export default function VersionHistoryPanel({ postId, onRestore }: VersionHistoryPanelProps) {
+export default function VersionHistoryPanel({
+  postId,
+  currentSavedAt,
+  onRestore,
+  onReloadCurrent,
+}: VersionHistoryPanelProps) {
   const [versions, setVersions] = useState<PostVersion[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -35,9 +42,29 @@ export default function VersionHistoryPanel({ postId, onRestore }: VersionHistor
       </button>
       {open && (
         <div className="border-t border-neutral-100 px-4 py-3">
-          {loading && <p className="text-xs text-neutral-500">Loading versions…</p>}
+          <div className="mb-4 rounded-lg border border-neutral-900 bg-neutral-900 px-3 py-2.5 text-white">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-300">Current saved version</p>
+            <p className="mt-1 text-xs text-neutral-100">
+              The live post document is always your source of truth — not the snapshots below.
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-xs text-neutral-300">
+                {currentSavedAt ? `Last saved ${formatDate(currentSavedAt)}` : 'Saved to Firestore'}
+              </span>
+              <button
+                type="button"
+                onClick={onReloadCurrent}
+                className="shrink-0 rounded bg-white px-2.5 py-1 text-[10px] font-semibold text-neutral-900 hover:bg-neutral-100"
+              >
+                Reload current
+              </button>
+            </div>
+          </div>
+
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Past snapshots</p>
+          {loading && <p className="text-xs text-neutral-500">Loading snapshots…</p>}
           {!loading && versions.length === 0 && (
-            <p className="text-xs text-neutral-500">No saved versions yet. Versions are created on each save.</p>
+            <p className="text-xs text-neutral-500">No snapshots yet. A snapshot is saved each time you save a draft.</p>
           )}
           <ul className="space-y-2">
             {versions.map((v) => (
@@ -48,7 +75,7 @@ export default function VersionHistoryPanel({ postId, onRestore }: VersionHistor
                   onClick={() => onRestore(v)}
                   className="shrink-0 font-medium text-neutral-800 hover:underline"
                 >
-                  Restore
+                  Restore snapshot
                 </button>
               </li>
             ))}

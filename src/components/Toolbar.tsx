@@ -74,6 +74,7 @@ function getBlockType(editor: Editor): string {
 
 import type { PostReference } from '../types/post'
 import { formatCitationLabel } from '../utils/citations'
+import { deferEditorTask } from '../utils/deferEditorTask'
 
 interface ToolbarProps {
   editor: Editor | null
@@ -94,7 +95,7 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
 
   useEffect(() => {
     if (!editor) return
-    const refresh = () => tick((n) => n + 1)
+    const refresh = () => deferEditorTask(() => tick((n) => n + 1))
     editor.on('selectionUpdate', refresh)
     editor.on('transaction', refresh)
     return () => {

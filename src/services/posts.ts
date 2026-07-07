@@ -2,7 +2,9 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
+  getDocsFromServer,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -115,8 +117,13 @@ function buildPostPayload(data: Partial<PostInput>, existingSlugs: string[] = []
 }
 
 async function fetchAllPosts(): Promise<Post[]> {
-  const snapshot = await getDocs(postsCollection)
-  return sortPosts(snapshot.docs.map((d) => mapDoc(d.id, d.data())))
+  try {
+    const snapshot = await getDocsFromServer(postsCollection)
+    return sortPosts(snapshot.docs.map((d) => mapDoc(d.id, d.data())))
+  } catch {
+    const snapshot = await getDocs(postsCollection)
+    return sortPosts(snapshot.docs.map((d) => mapDoc(d.id, d.data())))
+  }
 }
 
 export async function getPublishedPosts(): Promise<Post[]> {
@@ -142,6 +149,23 @@ export async function getAllPosts(): Promise<Post[]> {
 export async function getPost(id: string): Promise<Post | null> {
   try {
     const snapshot = await getDoc(doc(db, 'posts', id))
+    if (!snapshot.exists()) return null
+    return mapDoc(snapshot.id, snapshot.data())
+  } catch (error) {
+    throw new Error(getFirestoreErrorMessage(error))
+  }
+}
+
+/** Loads the live post document from the server (source of truth for editing). */
+export async function getPostForEdit(id: string): Promise<Post | null> {
+  try {
+    const ref = doc(db, 'posts', id)
+    let snapshot
+    try {
+      snapshot = await getDocFromServer(ref)
+    } catch {
+      snapshot = await getDoc(ref)
+    }
     if (!snapshot.exists()) return null
     return mapDoc(snapshot.id, snapshot.data())
   } catch (error) {
