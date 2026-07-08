@@ -16,6 +16,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import type { Post, PostInput, PostReference, PostStatus } from '../types/post'
+import type { SeriesRole } from '../types/series'
+import { sortSeriesPosts } from '../utils/series'
 import { cleanFirestoreData } from '../utils/cleanFirestoreData'
 import { getFirestoreErrorMessage } from '../utils/firestoreError'
 import { slugify, uniqueSlug } from '../utils/slug'
@@ -70,6 +72,14 @@ function mapDoc(id: string, data: Record<string, unknown>): Post {
     projectDemoUrl: (data.projectDemoUrl as string) ?? '',
     projectRepoUrl: (data.projectRepoUrl as string) ?? '',
     projectTechStack: Array.isArray(data.projectTechStack) ? (data.projectTechStack as string[]) : [],
+    seriesId: ((data.seriesId as string) || (data.projectId as string)) || null,
+    seriesIndex: typeof data.seriesIndex === 'number' ? data.seriesIndex : null,
+    seriesLabel: (data.seriesLabel as string) ?? '',
+    seriesRole: (['overview', 'devlog', 'deep-dive', 'launch', 'retrospective', 'other'] as const).includes(
+      data.seriesRole as SeriesRole,
+    )
+      ? (data.seriesRole as SeriesRole)
+      : null,
     scheduledPublishAt: scheduled,
     animation: mapPostAnimation(data.animation),
     createdAt: timestampToDate(data.createdAt as Timestamp | undefined) ?? new Date(0),
@@ -104,6 +114,13 @@ function buildPostPayload(data: Partial<PostInput>, existingSlugs: string[] = []
   if (data.projectDemoUrl !== undefined) payload.projectDemoUrl = data.projectDemoUrl
   if (data.projectRepoUrl !== undefined) payload.projectRepoUrl = data.projectRepoUrl
   if (data.projectTechStack !== undefined) payload.projectTechStack = data.projectTechStack
+  if (data.seriesId !== undefined) {
+    payload.seriesId = data.seriesId
+    payload.projectId = null
+  }
+  if (data.seriesIndex !== undefined) payload.seriesIndex = data.seriesIndex
+  if (data.seriesLabel !== undefined) payload.seriesLabel = data.seriesLabel
+  if (data.seriesRole !== undefined) payload.seriesRole = data.seriesRole
   if (data.scheduledPublishAt !== undefined) payload.scheduledPublishAt = data.scheduledPublishAt
   if (data.animation !== undefined) payload.animation = data.animation
 
@@ -208,6 +225,10 @@ export async function createPost(data: PostInput): Promise<string> {
         projectDemoUrl: data.projectDemoUrl ?? '',
         projectRepoUrl: data.projectRepoUrl ?? '',
         projectTechStack: data.projectTechStack ?? [],
+        seriesId: data.seriesId ?? null,
+        seriesIndex: data.seriesIndex ?? null,
+        seriesLabel: data.seriesLabel ?? '',
+        seriesRole: data.seriesRole ?? null,
         scheduledPublishAt: data.scheduledPublishAt ?? null,
         animation: data.animation ?? mapPostAnimation(undefined),
         slug: payload.slug ?? uniqueSlug(data.title || 'untitled', slugs),
@@ -293,3 +314,52 @@ export async function publishDueScheduledPosts(): Promise<number> {
 export async function togglePin(id: string, pinned: boolean): Promise<void> {
   await updatePost(id, { pinned: !pinned })
 }
+
+export async function getPostsBySeriesId(seriesId: string, publishedOnly = false): Promise<Post[]> {
+  try {
+    const qSeries = query(postsCollection, where('seriesId', '==', seriesId))
+    const qLegacy = query(postsCollection, where('projectId', '==', seriesId))
+    const [snapSeries, snapLegacy] = await Promise.all([getDocs(qSeries), getDocs(qLegacy)])
+    const byId = new Map<string, Post>()
+    for (const d of [...snapSeries.docs, ...snapLegacy.docs]) {
+      byId.set(d.id, mapDoc(d.id, d.data()))
+    }
+    let posts = sortSeriesPosts([...byId.values()])
+    if (publishedOnly) posts = posts.filter((p) => p.status === 'published')
+    return posts
+  } catch (error) {
+    throw new Error(getFirestoreErrorMessage(error))
+  }
+}
+
+/** @deprecated Use getPostsBySeriesId */
+export const getPostsByProjectId = getPostsBySeriesId
+
+export async function reorderSeriesPosts(orderedPostIds: string[]): Promise<void> {
+  try {
+    await Promise.all(
+      orderedPostIds.map((postId, index) => updatePost(postId, { seriesIndex: index + 1 })),
+    )
+  } catch (error) {
+    throw new Error(getFirestoreErrorMessage(error))
+  }
+}
+
+/** @deprecated Use reorderSeriesPosts */
+export const reorderProjectSeries = reorderSeriesPosts
+
+export async function clearSeriesFromPosts(seriesId: string): Promise<void> {
+  try {
+    const posts = await getPostsBySeriesId(seriesId)
+    await Promise.all(
+      posts.map((post) =>
+        updatePost(post.id, { seriesId: null, seriesIndex: null, seriesLabel: '', seriesRole: null }),
+      ),
+    )
+  } catch (error) {
+    throw new Error(getFirestoreErrorMessage(error))
+  }
+}
+
+/** @deprecated Use clearSeriesFromPosts */
+export const clearProjectFromPosts = clearSeriesFromPosts

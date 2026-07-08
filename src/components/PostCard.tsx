@@ -6,16 +6,18 @@ import { getReadingTime } from '../utils/readingTime'
 
 interface PostCardProps {
   post: Post
+  seriesHint?: string
 }
 
 function postUrl(post: Post): string {
   return post.slug ? `/post/s/${post.slug}` : `/post/${post.id}`
 }
 
-export default function PostCard({ post }: PostCardProps) {
+export default function PostCard({ post, seriesHint }: PostCardProps) {
   const readingTime = getReadingTime(post.content)
   const excerpt = post.excerpt || getExcerpt(post.content, 160)
-  const isProject = post.type === 'project'
+  const isLegacyProject = post.type === 'project' && !post.seriesId
+  const isSeriesPost = Boolean(post.seriesId)
 
   return (
     <article className={`group overflow-hidden rounded-2xl border bg-neutral-950 transition-all duration-300 hover:bg-neutral-900 ${
@@ -33,7 +35,15 @@ export default function PostCard({ post }: PostCardProps) {
                 <span>·</span>
               </>
             )}
-            <span className="capitalize">{isProject ? 'Project' : 'Article'}</span>
+            <span className="capitalize">
+              {isLegacyProject ? 'Project' : isSeriesPost ? 'Series' : 'Article'}
+            </span>
+            {seriesHint && (
+              <>
+                <span>·</span>
+                <span>{seriesHint}</span>
+              </>
+            )}
             <span>·</span>
             <time>{formatDate(post.updatedAt)}</time>
             <span>·</span>
@@ -46,7 +56,7 @@ export default function PostCard({ post }: PostCardProps) {
 
           <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-neutral-400">{excerpt}</p>
 
-          {isProject && post.projectTechStack.length > 0 && (
+          {isLegacyProject && post.projectTechStack.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {post.projectTechStack.slice(0, 4).map((tech) => (
                 <span key={tech} className="rounded border border-neutral-800 px-2 py-0.5 text-[10px] text-neutral-500">{tech}</span>
@@ -63,7 +73,7 @@ export default function PostCard({ post }: PostCardProps) {
           )}
 
           <span className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-neutral-300 group-hover:text-white">
-            {isProject ? 'View project' : 'Read article'}
+            {isLegacyProject ? 'View project' : 'Read article'}
             <span className="transition-transform group-hover:translate-x-0.5">→</span>
           </span>
         </div>

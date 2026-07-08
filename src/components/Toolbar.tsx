@@ -138,6 +138,15 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
   const fontFamily = getCurrentFontFamily(editor)
   const blockType = getBlockType(editor)
   const inTable = editor.isActive('table')
+  const imageActive = editor.isActive('image')
+  const imageAttrs = editor.getAttributes('image') as { width?: string | null; height?: string | null }
+
+  const setImageSize = (width?: string | number | null, height?: string | number | null) => {
+    editor.chain().focus().updateAttributes('image', {
+      width: width ?? null,
+      height: height ?? null,
+    }).run()
+  }
 
   const setBlockType = (value: string) => {
     if (value === 'paragraph') editor.chain().focus().setParagraph().run()
@@ -360,6 +369,49 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         <ToolbarButton onClick={() => imageInputRef.current?.click()} title="Upload image">
           <IconImage />
         </ToolbarButton>
+
+        {imageActive && (
+          <>
+            <Divider />
+            <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-md border border-neutral-200 bg-white px-1 py-0.5">
+              <span className="px-1 text-[10px] font-medium uppercase tracking-wide text-neutral-400">Image</span>
+              {(['25%', '50%', '75%', '100%'] as const).map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setImageSize(size, null)}
+                  className="rounded px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
+                >
+                  {size}
+                </button>
+              ))}
+              <input
+                type="number"
+                min={80}
+                placeholder="W px"
+                value={imageAttrs.width && !String(imageAttrs.width).includes('%') ? parseInt(String(imageAttrs.width), 10) || '' : ''}
+                onChange={(e) => setImageSize(e.target.value ? Number(e.target.value) : null, imageAttrs.height ?? null)}
+                className="w-16 rounded border border-neutral-200 px-1.5 py-1 text-xs"
+              />
+              <input
+                type="number"
+                min={60}
+                placeholder="H px"
+                value={imageAttrs.height ? parseInt(String(imageAttrs.height), 10) || '' : ''}
+                onChange={(e) => setImageSize(imageAttrs.width ?? null, e.target.value ? Number(e.target.value) : null)}
+                className="w-16 rounded border border-neutral-200 px-1.5 py-1 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setImageSize(null, null)}
+                className="rounded px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
+              >
+                Reset
+              </button>
+            </div>
+          </>
+        )}
+
         <ToolbarButton onClick={() => videoInputRef.current?.click()} title="Upload video">
           <span className="text-[11px] font-semibold">▶</span>
         </ToolbarButton>

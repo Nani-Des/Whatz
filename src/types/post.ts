@@ -2,6 +2,8 @@ export type PostStatus = 'draft' | 'published' | 'scheduled'
 export type PostType = 'article' | 'project'
 export type ReferenceType = 'upload' | 'link' | 'post'
 
+export type { SeriesRole } from './series'
+
 export type { AnimationPreset, PostAnimationSettings } from './postAnimation'
 export { DEFAULT_POST_ANIMATION } from './postAnimation'
 
@@ -38,6 +40,11 @@ export interface Post {
   projectDemoUrl: string
   projectRepoUrl: string
   projectTechStack: string[]
+  /** Links post to a series hub in the `series` collection */
+  seriesId: string | null
+  seriesIndex: number | null
+  seriesLabel: string
+  seriesRole: import('./series').SeriesRole | null
   scheduledPublishAt: Date | null
   animation: PostAnimationSettings
   createdAt: Date
@@ -61,6 +68,10 @@ export interface PostInput {
   projectDemoUrl?: string
   projectRepoUrl?: string
   projectTechStack?: string[]
+  seriesId?: string | null
+  seriesIndex?: number | null
+  seriesLabel?: string
+  seriesRole?: import('./series').SeriesRole | null
   scheduledPublishAt?: Date | null
   animation?: PostAnimationSettings
 }

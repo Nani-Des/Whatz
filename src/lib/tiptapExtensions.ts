@@ -2,7 +2,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
 import Highlight from '@tiptap/extension-highlight'
-import Image from '@tiptap/extension-image'
+import { ResizableImage } from './imageExtension'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
@@ -37,7 +37,7 @@ export const editorExtensions = [
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight.configure({ multicolor: false }),
-  Image.configure({ inline: false, allowBase64: false }),
+  ResizableImage.configure({ inline: false, allowBase64: false }),
   Video,
   PostLink,
   Link.configure({ openOnClick: false, autolink: true }),
@@ -70,7 +70,7 @@ export const contentExtensions = [
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight,
-  Image,
+  ResizableImage,
   Video,
   PostLink,
   Link,

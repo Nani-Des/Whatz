@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { publishDueScheduledPosts } from './services/posts'
 import PrivateRoute from './components/PrivateRoute'
@@ -12,6 +12,14 @@ import AdminOverview from './pages/admin/AdminOverview'
 import AdminPosts from './pages/admin/AdminPosts'
 import AdminProfileSettings from './pages/admin/AdminProfile'
 import AdminFeedback from './pages/admin/AdminFeedback'
+import AdminSeries from './pages/admin/AdminSeries'
+import AdminSeriesEditor from './pages/admin/AdminSeriesEditor'
+import SeriesHubPage from './pages/SeriesHubPage'
+
+function LegacyProjectRedirect() {
+  const { slug } = useParams<{ slug: string }>()
+  return <Navigate to={slug ? `/series/${slug}` : '/'} replace />
+}
 
 function App() {
   const init = useAuthStore((s) => s.init)
@@ -30,6 +38,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/p/:username" element={<PortfolioPage />} />
+        <Route path="/series/:slug" element={<SeriesHubPage />} />
+        <Route path="/projects/:slug" element={<LegacyProjectRedirect />} />
         <Route path="/post/:id" element={<PostView />} />
         <Route path="/post/s/:slug" element={<PostView />} />
         <Route path="/admin" element={<AdminLogin />} />
@@ -37,6 +47,11 @@ function App() {
         <Route path="/dashboard/posts" element={<PrivateRoute><AdminPosts /></PrivateRoute>} />
         <Route path="/dashboard/profile" element={<PrivateRoute><AdminProfileSettings /></PrivateRoute>} />
         <Route path="/dashboard/feedback" element={<PrivateRoute><AdminFeedback /></PrivateRoute>} />
+        <Route path="/dashboard/series" element={<PrivateRoute><AdminSeries /></PrivateRoute>} />
+        <Route path="/dashboard/series/new" element={<PrivateRoute><AdminSeriesEditor /></PrivateRoute>} />
+        <Route path="/dashboard/series/:id" element={<PrivateRoute><AdminSeriesEditor /></PrivateRoute>} />
+        <Route path="/dashboard/projects" element={<Navigate to="/dashboard/series" replace />} />
+        <Route path="/dashboard/projects/*" element={<Navigate to="/dashboard/series" replace />} />
         <Route path="/editor/new" element={<PrivateRoute><EditorPage /></PrivateRoute>} />
         <Route path="/editor/:id" element={<PrivateRoute><EditorPage /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />

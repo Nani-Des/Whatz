@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ProfileHero from '../components/ProfileHero'
 import PostCard from '../components/PostCard'
+import SeriesCard from '../components/SeriesCard'
 import ContactCTA from '../components/ContactCTA'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
 import { useSEO } from '../hooks/useSEO'
-import { getPublishedPosts } from '../services/posts'
+import { getPublishedPosts, getPostsBySeriesId } from '../services/posts'
+import { getPublishedSeries } from '../services/series'
 import { getProfile } from '../services/profile'
 import { recordVisit } from '../services/analytics'
 import { DEFAULT_PROFILE } from '../types/profile'
 import type { Profile } from '../types/profile'
 import type { Post } from '../types/post'
+import type { Series } from '../types/series'
 
 interface HomeProps {
   portfolioUsername?: string
@@ -18,6 +21,8 @@ interface HomeProps {
 
 export default function Home({ portfolioUsername }: HomeProps) {
   const [posts, setPosts] = useState<Post[]>([])
+  const [seriesList, setSeriesList] = useState<Series[]>([])
+  const [seriesPostCounts, setSeriesPostCounts] = useState<Record<string, number>>({})
   const [profile, setProfile] = useState<Profile>({ ...DEFAULT_PROFILE, updatedAt: new Date() })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,14 +33,23 @@ export default function Home({ portfolioUsername }: HomeProps) {
   }, [portfolioUsername])
 
   useEffect(() => {
-    Promise.all([getPublishedPosts(), getProfile()])
-      .then(([loadedPosts, loadedProfile]) => {
+    Promise.all([getPublishedPosts(), getProfile(), getPublishedSeries()])
+      .then(async ([loadedPosts, loadedProfile, loadedSeries]) => {
         if (portfolioUsername && loadedProfile.username !== portfolioUsername) {
           setError('Portfolio not found.')
           return
         }
         setPosts(loadedPosts)
         setProfile(loadedProfile)
+        setSeriesList(loadedSeries)
+        const counts: Record<string, number> = {}
+        await Promise.all(
+          loadedSeries.map(async (item) => {
+            const seriesPosts = await getPostsBySeriesId(item.id, true)
+            counts[item.id] = seriesPosts.length
+          }),
+        )
+        setSeriesPostCounts(counts)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load content.'))
       .finally(() => setLoading(false))
@@ -49,8 +63,9 @@ export default function Home({ portfolioUsername }: HomeProps) {
   })
 
   const pinned = posts.filter((p) => p.pinned)
-  const projects = posts.filter((p) => p.type === 'project' && !p.pinned)
-  const articles = posts.filter((p) => p.type !== 'project' && !p.pinned)
+  const legacyProjects = posts.filter((p) => p.type === 'project' && !p.seriesId && !p.pinned)
+  const articles = posts.filter((p) => p.type !== 'project' && !p.seriesId && !p.pinned)
+  const hasSeries = seriesList.length > 0 || legacyProjects.length > 0
 
   const portfolioUrl = `${window.location.origin}/p/${profile.username}`
 
@@ -110,14 +125,21 @@ export default function Home({ portfolioUsername }: HomeProps) {
               </section>
             )}
 
-            {projects.length > 0 && (
+            {hasSeries && (
               <section className="mt-16">
                 <div className="mb-8">
-                  <p className="text-sm font-medium uppercase tracking-widest text-neutral-500">Projects</p>
-                  <h2 className="mt-1 text-2xl font-semibold text-white sm:text-3xl">Selected work</h2>
+                  <p className="text-sm font-medium uppercase tracking-widest text-neutral-500">Series</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-white sm:text-3xl">Multi-part work</h2>
                 </div>
                 <div className="grid gap-5 sm:grid-cols-2">
-                  {projects.map((post) => (
+                  {seriesList.map((item) => (
+                    <SeriesCard
+                      key={item.id}
+                      series={item}
+                      postCount={seriesPostCounts[item.id]}
+                    />
+                  ))}
+                  {legacyProjects.map((post) => (
                     <PostCard key={post.id} post={post} />
                   ))}
                 </div>
@@ -135,7 +157,7 @@ export default function Home({ portfolioUsername }: HomeProps) {
                 </p>
               </div>
 
-              {articles.length === 0 && projects.length === 0 && pinned.length === 0 && (
+              {articles.length === 0 && !hasSeries && pinned.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-neutral-800 p-12 text-center">
                   <p className="text-neutral-500">No published content yet.</p>
                 </div>

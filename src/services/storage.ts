@@ -28,6 +28,15 @@ export async function uploadPostCover(postId: string, file: File): Promise<strin
   return uploadFile(path, file)
 }
 
+export async function uploadSeriesCover(seriesId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `series/${seriesId}/cover.${ext}`
+  return uploadFile(path, file)
+}
+
+/** @deprecated Use uploadSeriesCover */
+export const uploadProjectCover = uploadSeriesCover
+
 export async function uploadEditorImage(postId: string, file: File): Promise<string> {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const path = `posts/${postId}/images/${Date.now()}-${safeName}`

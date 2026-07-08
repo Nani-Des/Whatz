@@ -40,5 +40,15 @@ service cloud.firestore {
       allow create: if true;
       allow read: if isAdmin();
     }
+
+    match /series/{seriesId} {
+      allow read: if resource.data.status != 'paused' || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if resource.data.status != 'paused' || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

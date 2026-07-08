@@ -3,12 +3,13 @@ import { useAuthStore } from '../stores/authStore'
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  active: 'overview' | 'posts' | 'profile' | 'feedback'
+  active: 'overview' | 'posts' | 'series' | 'profile' | 'feedback'
 }
 
 const NAV = [
   { id: 'overview' as const, label: 'Overview', path: '/dashboard' },
   { id: 'posts' as const, label: 'Posts', path: '/dashboard/posts' },
+  { id: 'series' as const, label: 'Series', path: '/dashboard/series' },
   { id: 'profile' as const, label: 'Profile', path: '/dashboard/profile' },
   { id: 'feedback' as const, label: 'Feedback', path: '/dashboard/feedback' },
 ]

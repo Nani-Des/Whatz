@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { getSeries } from '../services/series'
 import Editor from '../components/Editor'
 import ExcerptField from '../components/ExcerptField'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
@@ -7,10 +8,11 @@ import MediaReferencesPanel from '../components/MediaReferencesPanel'
 import PostReferencesPanel from '../components/PostReferencesPanel'
 import VersionHistoryPanel from '../components/VersionHistoryPanel'
 import AnimationSettingsPanel from '../components/AnimationSettingsPanel'
-import { createPost, getPostForEdit, updatePost } from '../services/posts'
+import { createPost, getPostForEdit, getPostsBySeriesId, updatePost } from '../services/posts'
 import { savePostVersion } from '../services/versions'
 import { uploadEditorImage, uploadEditorVideo, uploadPostCover } from '../services/storage'
 import type { Post, PostAnimationSettings, PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
+import type { SeriesRole } from '../types/series'
 import { DEFAULT_POST_ANIMATION } from '../types/post'
 import { slugify } from '../utils/slug'
 import { getExcerpt } from '../utils/excerpt'
@@ -60,6 +62,10 @@ function buildPostData(fields: {
   projectDemoUrl: string
   projectRepoUrl: string
   projectTechStack: string
+  seriesId: string | null
+  seriesIndex: number | null
+  seriesLabel: string
+  seriesRole: SeriesRole | null
   scheduledPublishAt: string
   animation: PostAnimationSettings
 }): PostInput {
@@ -86,6 +92,10 @@ function buildPostData(fields: {
     projectDemoUrl: fields.projectDemoUrl,
     projectRepoUrl: fields.projectRepoUrl,
     projectTechStack: parseTags(fields.projectTechStack),
+    seriesId: fields.seriesId,
+    seriesIndex: fields.seriesIndex,
+    seriesLabel: fields.seriesLabel,
+    seriesRole: fields.seriesRole,
     scheduledPublishAt: scheduled,
     animation: fields.animation,
   }
@@ -93,6 +103,7 @@ function buildPostData(fields: {
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const isNew = !id || id === 'new'
   const navigate = useNavigate()
 
@@ -113,6 +124,11 @@ export default function EditorPage() {
   const [projectDemoUrl, setProjectDemoUrl] = useState('')
   const [projectRepoUrl, setProjectRepoUrl] = useState('')
   const [projectTechStack, setProjectTechStack] = useState('')
+  const [seriesId, setSeriesId] = useState<string | null>(null)
+  const [seriesIndex, setSeriesIndex] = useState<number | null>(null)
+  const [seriesLabel, setSeriesLabel] = useState('')
+  const [seriesRole, setSeriesRole] = useState<SeriesRole | null>(null)
+  const [seriesTitle, setSeriesTitle] = useState<string | null>(null)
   const [scheduledPublishAt, setScheduledPublishAt] = useState('')
   const [animation, setAnimation] = useState<PostAnimationSettings>({ ...DEFAULT_POST_ANIMATION })
   const [showSeo, setShowSeo] = useState(false)
@@ -129,12 +145,12 @@ export default function EditorPage() {
   const fieldsRef = useRef({
     title, tagsInput, content, excerpt, excerptManual, slug, type, status, pinned,
     coverImageUrl, seoTitle, seoDescription, ogImageUrl, references,
-    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt, animation,
+    projectDemoUrl, projectRepoUrl, projectTechStack, seriesId, seriesIndex, seriesLabel, seriesRole, scheduledPublishAt, animation,
   })
   fieldsRef.current = {
     title, tagsInput, content, excerpt, excerptManual, slug, type, status, pinned,
     coverImageUrl, seoTitle, seoDescription, ogImageUrl, references,
-    projectDemoUrl, projectRepoUrl, projectTechStack, scheduledPublishAt, animation,
+    projectDemoUrl, projectRepoUrl, projectTechStack, seriesId, seriesIndex, seriesLabel, seriesRole, scheduledPublishAt, animation,
   }
   const postIdRef = useRef(postId)
   postIdRef.current = postId
@@ -181,6 +197,10 @@ export default function EditorPage() {
     setProjectDemoUrl(post.projectDemoUrl)
     setProjectRepoUrl(post.projectRepoUrl)
     setProjectTechStack(post.projectTechStack.join(', '))
+    setSeriesId(post.seriesId)
+    setSeriesIndex(post.seriesIndex)
+    setSeriesLabel(post.seriesLabel)
+    setSeriesRole(post.seriesRole)
     setScheduledPublishAt(post.scheduledPublishAt ? post.scheduledPublishAt.toISOString().slice(0, 16) : '')
     setAnimation(post.animation)
     setPostId(post.id)
@@ -190,6 +210,34 @@ export default function EditorPage() {
   const markSkipLoad = useCallback((pid: string) => {
     skipLoadForPostIdRef.current = pid
   }, [])
+
+  useEffect(() => {
+    if (!isNew) return
+    if (searchParams.get('fromAdmin') !== '1') return
+    const querySeriesId = searchParams.get('seriesId') ?? searchParams.get('projectId')
+    if (!querySeriesId) return
+    setSeriesId(querySeriesId)
+    getPostsBySeriesId(querySeriesId)
+      .then((siblings) => {
+        const maxIndex = siblings.reduce((max, p) => Math.max(max, p.seriesIndex ?? 0), 0)
+        setSeriesIndex(maxIndex + 1)
+        setSeriesRole('devlog')
+      })
+      .catch(() => {
+        setSeriesIndex(1)
+        setSeriesRole('devlog')
+      })
+  }, [isNew, searchParams])
+
+  useEffect(() => {
+    if (!seriesId) {
+      setSeriesTitle(null)
+      return
+    }
+    getSeries(seriesId)
+      .then((item) => setSeriesTitle(item?.title ?? null))
+      .catch(() => setSeriesTitle(null))
+  }, [seriesId])
 
   useEffect(() => {
     const scrollToPostPicker = () => {
@@ -555,7 +603,24 @@ export default function EditorPage() {
             />
           </div>
 
-          {type === 'project' && (
+          {seriesId && (
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+              <p className="font-semibold text-neutral-900">Series membership</p>
+              <p className="mt-1">
+                {seriesTitle ? `"${seriesTitle}"` : 'Assigned to a series'}
+                {seriesIndex != null ? ` · Part ${seriesIndex}` : ''}
+              </p>
+              <p className="mt-2 text-xs text-neutral-500">
+                Add, remove, or reorder posts in a series from{' '}
+                <Link to="/dashboard/series" className="font-medium text-neutral-700 underline">
+                  Dashboard → Series
+                </Link>
+                .
+              </p>
+            </div>
+          )}
+
+          {type === 'project' && !seriesId && (
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
               <p className="text-sm font-semibold text-neutral-900">Project details</p>
               <input type="url" value={projectDemoUrl} onChange={(e) => setProjectDemoUrl(e.target.value)} placeholder="Demo URL" className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none" />

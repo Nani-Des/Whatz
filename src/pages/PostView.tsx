@@ -12,10 +12,14 @@ import ReadingProgressBar from '../components/ReadingProgressBar'
 import { useSEO } from '../hooks/useSEO'
 import { animationClass } from '../hooks/useScrollReveal'
 import { resolvePostAnimation } from '../types/postAnimation'
-import { getPost, getPostBySlug, incrementPostView } from '../services/posts'
+import SeriesBanner from '../components/SeriesBanner'
+import SeriesNav from '../components/SeriesNav'
+import { getPost, getPostBySlug, getPostsBySeriesId, incrementPostView } from '../services/posts'
+import { getSeries, seriesShareUrl } from '../services/series'
 import { recordVisit } from '../services/analytics'
 import { useAuthStore, isAdminUser } from '../stores/authStore'
 import type { Post } from '../types/post'
+import type { Series } from '../types/series'
 import { formatDate } from '../utils/formatDate'
 import { getReadingTime } from '../utils/readingTime'
 
@@ -24,6 +28,8 @@ export default function PostView() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = isAdminUser(user)
   const [post, setPost] = useState<Post | null>(null)
+  const [series, setSeries] = useState<Series | null>(null)
+  const [seriesSiblings, setSeriesSiblings] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [mediaReady, setMediaReady] = useState(false)
@@ -43,6 +49,10 @@ export default function PostView() {
 
   useEffect(() => {
     if (!postKey) return
+    setLoading(true)
+    setError('')
+    setSeries(null)
+    setSeriesSiblings([])
     const loader = slug ? getPostBySlug(slug) : getPost(id!)
     loader
       .then((p) => {
@@ -51,6 +61,22 @@ export default function PostView() {
           return
         }
         setPost(p)
+        if (p.seriesId) {
+          getSeries(p.seriesId)
+            .then((loaded) => {
+              if (loaded) setSeries(loaded)
+            })
+            .catch(() => {})
+          getPostsBySeriesId(p.seriesId, !isAdmin)
+            .then((siblings) => {
+              const visible = isAdmin ? siblings : siblings.filter((s) => s.status === 'published')
+              setSeriesSiblings(visible)
+            })
+            .catch(() => setSeriesSiblings([]))
+        } else {
+          setSeries(null)
+          setSeriesSiblings([])
+        }
         if (p.status === 'published') {
           recordVisit(slug ? `/post/s/${p.slug}` : `/post/${p.id}`, p.id)
           incrementPostView(p.id)
@@ -99,12 +125,24 @@ export default function PostView() {
             <span>Portfolio</span>
           </Link>
           {post && (
-            <ShareButton
-              title={post.title}
-              slug={post.slug}
-              variant="light"
-              className="post-reader-nav__share"
-            />
+            <div className="post-reader-nav__share-group">
+              <ShareButton
+                title={post.title}
+                slug={post.slug}
+                label="Share post"
+                variant="light"
+                className="post-reader-nav__share"
+              />
+              {series && (
+                <ShareButton
+                  title={series.title}
+                  shareUrl={seriesShareUrl(series.slug)}
+                  label="Share series"
+                  variant="light"
+                  className="post-reader-nav__share"
+                />
+              )}
+            </div>
           )}
         </div>
       </header>
@@ -130,6 +168,10 @@ export default function PostView() {
                   Draft preview — only visible to you.{' '}
                   <Link to={`/editor/${post.id}`}>Edit post</Link>
                 </div>
+              )}
+
+              {series && post.seriesId && (
+                <SeriesBanner series={series} post={post} siblings={seriesSiblings} />
               )}
 
               <header className="post-reader-hero">
@@ -207,6 +249,10 @@ export default function PostView() {
               </div>
 
               <PostReferences references={post.references} reveal={anim?.revealReferences ?? false} />
+
+              {series && post.seriesId && (
+                <SeriesNav series={series} post={post} siblings={seriesSiblings} />
+              )}
 
               {post.status === 'published' && (
                 <div className="post-reader-feedback">
