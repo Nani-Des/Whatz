@@ -80,6 +80,8 @@ export default function PostView() {
         if (p.status === 'published') {
           recordVisit(slug ? `/post/s/${p.slug}` : `/post/${p.id}`, p.id)
           incrementPostView(p.id)
+          setPost({ ...p, viewCount: p.viewCount + 1 })
+          return
         }
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load post.'))
@@ -181,12 +183,10 @@ export default function PostView() {
                   <time dateTime={post.updatedAt.toISOString()}>{formatDate(post.updatedAt)}</time>
                   <span className="post-reader-meta__dot" aria-hidden="true" />
                   <span>{readingTime} min read</span>
-                  {post.viewCount > 0 && (
-                    <>
-                      <span className="post-reader-meta__dot" aria-hidden="true" />
-                      <span>{post.viewCount} views</span>
-                    </>
-                  )}
+                  <span className="post-reader-meta__dot" aria-hidden="true" />
+                  <span className="post-reader-meta__views">
+                    {post.viewCount.toLocaleString()} {post.viewCount === 1 ? 'view' : 'views'}
+                  </span>
                 </div>
 
                 <h1 className="post-title">{post.title}</h1>

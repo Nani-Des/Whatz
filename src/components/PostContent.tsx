@@ -11,8 +11,9 @@ import xml from 'highlight.js/lib/languages/xml'
 import 'highlight.js/styles/github-dark.css'
 import type { PostReference } from '../types/post'
 import { useScrollReveal } from '../hooks/useScrollReveal'
-import { formatCitationLabel, getCitationIndex } from '../utils/citations'
+import { prepareCitationsHtml } from '../utils/citations'
 import { hydrateLazyMedia, prepareLazyMediaHtml } from '../utils/lazyMedia'
+import { hydrateMathElements, prepareMathHtml } from '../utils/katexRender'
 
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('typescript', typescript)
@@ -33,23 +34,6 @@ interface PostContentProps {
   staggerContent?: boolean
 }
 
-function hydrateCitations(container: HTMLElement, references: PostReference[]) {
-  const links = container.querySelectorAll<HTMLElement>('sup[data-type="citation"] a, a.citation-link[data-ref-id]')
-  links.forEach((link) => {
-    const refId = link.getAttribute('data-ref-id')
-    if (!refId) return
-
-    const index = getCitationIndex(references, refId)
-    if (index > 0) {
-      link.textContent = formatCitationLabel(index)
-      link.setAttribute('href', `#ref-${refId}`)
-    } else {
-      link.textContent = '[?]'
-      link.removeAttribute('href')
-    }
-  })
-}
-
 function handlePostLinkClick(e: Event, container: HTMLElement, navigate: (path: string) => void) {
   const link = (e.target as HTMLElement).closest('a.post-inline-link, a[data-type="post-link"]')
   if (!link || !container.contains(link)) return
@@ -60,6 +44,7 @@ function handlePostLinkClick(e: Event, container: HTMLElement, navigate: (path: 
   e.preventDefault()
   navigate(href)
 }
+
 function handleCitationClick(e: Event, container: HTMLElement) {
   const link = (e.target as HTMLElement).closest('a.citation-link, sup[data-type="citation"] a')
   if (!link || !container.contains(link)) return
@@ -72,7 +57,7 @@ function handleCitationClick(e: Event, container: HTMLElement) {
   if (target) {
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     target.classList.add('citation-highlight')
-    setTimeout(() => target.classList.remove('citation-highlight'), 1600)
+    window.setTimeout(() => target.classList.remove('citation-highlight'), 1600)
   }
 }
 
@@ -85,7 +70,10 @@ export default function PostContent({
 }: PostContentProps) {
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
-  const lazyHtml = useMemo(() => prepareLazyMediaHtml(html), [html])
+  const lazyHtml = useMemo(
+    () => prepareLazyMediaHtml(prepareMathHtml(prepareCitationsHtml(html, references))),
+    [html, references],
+  )
 
   useScrollReveal(ref, scrollReveal, staggerContent, [lazyHtml])
 
@@ -97,7 +85,7 @@ export default function PostContent({
       hljs.highlightElement(block as HTMLElement)
     })
 
-    hydrateCitations(el, references)
+    hydrateMathElements(el)
     onHeadingsReady?.(el)
 
     const onClick = (e: Event) => {

@@ -198,7 +198,7 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
   }
 
   return (
-    <div className="sticky top-0 z-20 border-b border-neutral-200 bg-neutral-50">
+    <>
       <input
         ref={imageInputRef}
         type="file"
@@ -297,6 +297,12 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
           <IconStrike />
         </ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive('subscript')} title="Subscript">
+          <span className="text-[11px] font-semibold">x<sub className="text-[8px]">2</sub></span>
+        </ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive('superscript')} title="Superscript">
+          <span className="text-[11px] font-semibold">x<sup className="text-[8px]">2</sup></span>
+        </ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
           <IconHighlight />
         </ToolbarButton>
@@ -335,6 +341,12 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         </ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code block">
           <IconCodeBlock />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => window.dispatchEvent(new CustomEvent('editor:open-equation', { detail: { display: false } }))}
+          title="Insert equation (LaTeX)"
+        >
+          <span className="text-sm font-serif italic">∑</span>
         </ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider">
           <IconHr />
@@ -453,6 +465,6 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
           </>
         )}
       </div>
-    </div>
+    </>
   )
 }

@@ -22,6 +22,8 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
   { title: 'Warning callout', description: 'Warning callout', icon: '⚠', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent({ type: 'callout', attrs: { variant: 'warning' }, content: [{ type: 'paragraph' }] }).run() },
   { title: 'Tip callout', description: 'Helpful tip callout', icon: '💡', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertContent({ type: 'callout', attrs: { variant: 'tip' }, content: [{ type: 'paragraph' }] }).run() },
   { title: 'Code block', description: 'Syntax-highlighted code', icon: '{ }', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+  { title: 'Inline equation', description: 'LaTeX math in line', icon: '∑', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:open-equation', { detail: { display: false } })) } },
+  { title: 'Display equation', description: 'Centered LaTeX block', icon: '∫', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:open-equation', { detail: { display: true } })) } },
   { title: 'Bullet list', description: 'Unordered list', icon: '•', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run() },
   { title: 'Quote', description: 'Block quote', icon: '"', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
 ]

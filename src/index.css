@@ -1443,6 +1443,7 @@
   .editor-page-main {
     display: grid;
     gap: 1.5rem;
+    --editor-toolbar-offset: 3.25rem;
   }
 
   @media (min-width: 1024px) {
@@ -1479,6 +1480,429 @@
 
   .editor-page-main__aside {
     min-width: 0;
+  }
+
+  .editor-toolbar-rail {
+    position: sticky;
+    top: var(--editor-toolbar-offset, 3.25rem);
+    z-index: 25;
+    margin: 0;
+    border-bottom: 1px solid #e5e5e5;
+    border-radius: 0.75rem 0.75rem 0 0;
+    background: #fafafa;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .editor-toolbar-rail > div {
+    background: #fafafa;
+  }
+
+  .editor-surface {
+    border-radius: 0.75rem;
+  }
+
+  /* Math in editor */
+  .tiptap-editor-content [data-node-view-wrapper].editor-math {
+    margin: 0;
+  }
+
+  .editor-math {
+    position: relative;
+    max-width: 100%;
+  }
+
+  .editor-math--inline {
+    display: inline;
+    vertical-align: baseline;
+    margin: 0;
+  }
+
+  .editor-math--block {
+    display: block;
+    margin: 0.35rem 0;
+    text-align: center;
+  }
+
+  .editor-math__surface {
+    display: inline;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    max-width: 100%;
+    line-height: inherit;
+  }
+
+  .editor-math--block .editor-math__surface {
+    display: inline-block;
+    padding: 0.15rem 0.25rem;
+  }
+
+  .editor-math--selected .editor-math__surface {
+    outline: 1px solid #a3a3a3;
+    outline-offset: 1px;
+    background: #fafafa;
+  }
+
+  .editor-math__preview {
+    display: inline;
+    overflow-x: auto;
+  }
+
+  .editor-math__preview .katex {
+    font-size: 1em;
+  }
+
+  .editor-math__preview .katex-display {
+    margin: 0;
+  }
+
+  .editor-math--block .editor-math__preview .katex-display {
+    margin: 0;
+  }
+
+  .editor-math__placeholder {
+    font-size: 0.8125rem;
+    color: #737373;
+    font-style: italic;
+  }
+
+  .editor-math__actions {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: center;
+    margin-top: 0.35rem;
+  }
+
+  .editor-math__btn {
+    border: 1px solid #d4d4d4;
+    border-radius: 0.375rem;
+    background: #fff;
+    font-size: 0.6875rem;
+    padding: 0.15rem 0.45rem;
+    cursor: pointer;
+  }
+
+  .editor-math__btn--danger {
+    color: #b91c1c;
+    border-color: #fecaca;
+  }
+
+  .post-content .math-block {
+    display: block;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  .post-content .math-block .katex-display {
+    margin: 0;
+  }
+
+  .post-content .math-inline {
+    display: inline;
+  }
+
+  .post-content .math-inline .katex {
+    font-size: 1em;
+  }
+
+  .post-content [data-type="math"] {
+    max-width: 100%;
+  }
+
+  .math-error {
+    color: #b91c1c;
+    font-family: ui-monospace, monospace;
+    font-size: 0.875rem;
+  }
+
+  .post-reader-meta__views {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Equation editor modal */
+  .equation-editor-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+  }
+
+  .equation-editor {
+    width: min(960px, 100%);
+    max-height: min(92vh, 900px);
+    overflow: auto;
+    border-radius: 1rem;
+    border: 1px solid #262626;
+    background: #0a0a0a;
+    color: #fafafa;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  .equation-editor__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem 0.75rem;
+    border-bottom: 1px solid #262626;
+  }
+
+  .equation-editor__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .equation-editor__subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    color: #a3a3a3;
+  }
+
+  .equation-editor__close {
+    border: none;
+    background: transparent;
+    color: #a3a3a3;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.375rem;
+  }
+
+  .equation-editor__close:hover {
+    color: #fff;
+    background: #262626;
+  }
+
+  .equation-editor__mode {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .equation-editor__mode-btn {
+    border: 1px solid #404040;
+    border-radius: 999px;
+    background: transparent;
+    color: #d4d4d4;
+    font-size: 0.8125rem;
+    padding: 0.35rem 0.85rem;
+    cursor: pointer;
+  }
+
+  .equation-editor__mode-btn--active {
+    background: #fafafa;
+    color: #0a0a0a;
+    border-color: #fafafa;
+  }
+
+  .equation-editor__body {
+    display: grid;
+    gap: 1rem;
+    padding: 0 1.5rem 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .equation-editor__body {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .equation-editor__label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #737373;
+    margin-bottom: 0.35rem;
+  }
+
+  .equation-editor__textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 10rem;
+    border-radius: 0.625rem;
+    border: 1px solid #404040;
+    background: #171717;
+    color: #fafafa;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    padding: 0.75rem;
+  }
+
+  .equation-editor__textarea:focus {
+    outline: none;
+    border-color: #737373;
+  }
+
+  .equation-editor__hint {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #737373;
+  }
+
+  .equation-editor__hint code {
+    font-family: ui-monospace, monospace;
+    color: #d4d4d4;
+  }
+
+  .equation-editor__preview {
+    min-height: 10rem;
+    border-radius: 0.625rem;
+    border: 1px solid #404040;
+    background: #fff;
+    color: #0a0a0a;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+
+  .equation-editor__preview--display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .equation-editor__preview--inline {
+    display: flex;
+    align-items: center;
+  }
+
+  .equation-editor__preview--error {
+    border-color: #fca5a5;
+  }
+
+  .equation-editor__preview-empty {
+    color: #737373;
+    font-size: 0.875rem;
+    font-style: italic;
+  }
+
+  .equation-editor__templates,
+  .equation-editor__symbols {
+    padding: 0 1.5rem 1rem;
+  }
+
+  .equation-editor__template-grid {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+
+  .equation-editor__template {
+    text-align: left;
+    border: 1px solid #333;
+    border-radius: 0.625rem;
+    background: #141414;
+    color: #fafafa;
+    padding: 0.55rem 0.65rem;
+    cursor: pointer;
+  }
+
+  .equation-editor__template:hover {
+    border-color: #525252;
+    background: #1a1a1a;
+  }
+
+  .equation-editor__template-name {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .equation-editor__template-desc {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.6875rem;
+    color: #737373;
+  }
+
+  .equation-editor__symbol-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .equation-editor__symbol-tab {
+    border: 1px solid #333;
+    border-radius: 999px;
+    background: transparent;
+    color: #a3a3a3;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    cursor: pointer;
+  }
+
+  .equation-editor__symbol-tab--active {
+    background: #fafafa;
+    color: #0a0a0a;
+    border-color: #fafafa;
+  }
+
+  .equation-editor__symbol-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
+    gap: 0.35rem;
+  }
+
+  .equation-editor__symbol {
+    border: 1px solid #333;
+    border-radius: 0.375rem;
+    background: #141414;
+    color: #fafafa;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.45rem 0.25rem;
+    cursor: pointer;
+  }
+
+  .equation-editor__symbol:hover {
+    border-color: #525252;
+    background: #1f1f1f;
+  }
+
+  .equation-editor__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding: 1rem 1.5rem 1.25rem;
+    border-top: 1px solid #262626;
+  }
+
+  .equation-editor__footer-btn {
+    border-radius: 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.55rem 1rem;
+    cursor: pointer;
+  }
+
+  .equation-editor__footer-btn--ghost {
+    border: 1px solid #404040;
+    background: transparent;
+    color: #d4d4d4;
+  }
+
+  .equation-editor__footer-btn--primary {
+    border: none;
+    background: #fafafa;
+    color: #0a0a0a;
+  }
+
+  .equation-editor__footer-btn--primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   /* Editor video block */

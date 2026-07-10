@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import 'tippy.js/dist/tippy.css'
+import 'katex/dist/katex.min.css'
 import './index.css'
 import App from './App.tsx'
 

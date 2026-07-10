@@ -2,7 +2,10 @@ import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
 import Highlight from '@tiptap/extension-highlight'
+import Subscript from '@tiptap/extension-subscript'
+import Superscript from '@tiptap/extension-superscript'
 import { ResizableImage } from './imageExtension'
+import { MathInline, MathBlock } from './mathExtension'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
@@ -32,12 +35,16 @@ export const editorExtensions = [
   StarterKit.configure(sharedKit),
   CodeBlockWithLanguage,
   Underline,
+  Subscript,
+  Superscript,
   TextStyle,
   FontSize,
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight.configure({ multicolor: false }),
   ResizableImage.configure({ inline: false, allowBase64: false }),
+  MathInline,
+  MathBlock,
   Video,
   PostLink,
   Link.configure({ openOnClick: false, autolink: true }),
@@ -65,12 +72,16 @@ export const contentExtensions = [
   StarterKit.configure(sharedKit),
   CodeBlockWithLanguage,
   Underline,
+  Subscript,
+  Superscript,
   TextStyle,
   FontSize,
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Highlight,
   ResizableImage,
+  MathInline,
+  MathBlock,
   Video,
   PostLink,
   Link,
