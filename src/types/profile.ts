@@ -18,7 +18,7 @@ export type ProfileInput = Omit<Profile, 'updatedAt'>
 
 export const DEFAULT_PROFILE: ProfileInput = {
   name: 'Desmond Nani',
-  headline: 'Engineer · Builder · Storyteller',
+  headline: 'Engineer · Developer · Researcher',
   bio: 'I document projects, learnings, and technical deep-dives. Welcome to my portfolio blog.',
   avatarUrl: '',
   location: '',
