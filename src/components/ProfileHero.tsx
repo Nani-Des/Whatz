@@ -5,6 +5,26 @@ interface ProfileHeroProps {
   portfolioUrl?: string
 }
 
+export function ProfileHeroSkeleton() {
+  return (
+    <section
+      className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 p-5 sm:rounded-3xl sm:p-8 lg:p-12"
+      aria-busy="true"
+      aria-label="Loading profile"
+    >
+      <div className="flex animate-pulse flex-col gap-4 sm:flex-row sm:gap-5 lg:gap-6">
+        <div className="h-20 w-20 shrink-0 rounded-2xl bg-neutral-800 sm:h-24 sm:w-24" />
+        <div className="flex-1 space-y-3">
+          <div className="h-3 w-24 rounded bg-neutral-800" />
+          <div className="h-8 w-56 max-w-full rounded bg-neutral-800" />
+          <div className="h-5 w-72 max-w-full rounded bg-neutral-800" />
+          <div className="h-14 w-full max-w-xl rounded bg-neutral-800" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function SocialLink({
   href,
   label,

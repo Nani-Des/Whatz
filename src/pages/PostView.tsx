@@ -17,6 +17,7 @@ import SeriesNav from '../components/SeriesNav'
 import { getPost, getPostBySlug, getPostsBySeriesId, incrementPostView } from '../services/posts'
 import { getSeries, seriesShareUrl } from '../services/series'
 import { recordVisit } from '../services/analytics'
+import { postShareUrl } from '../utils/postLinks'
 import { useAuthStore, isAdminUser } from '../stores/authStore'
 import type { Post } from '../types/post'
 import type { Series } from '../types/series'
@@ -99,7 +100,7 @@ export default function PostView() {
     title: post?.seoTitle || post?.title || 'Post',
     description: post?.seoDescription || post?.excerpt,
     image: post?.ogImageUrl || post?.coverImageUrl,
-    url: post ? `${window.location.origin}/post/s/${post.slug}` : undefined,
+    url: post ? postShareUrl(post) : undefined,
   })
 
   const readingTime = post ? getReadingTime(post.content) : 0
@@ -131,6 +132,7 @@ export default function PostView() {
               <ShareButton
                 title={post.title}
                 slug={post.slug}
+                postId={post.id}
                 label="Share post"
                 variant="light"
                 className="post-reader-nav__share"
@@ -271,7 +273,7 @@ export default function PostView() {
                 <div className="post-reader-aside__card post-reader-aside__card--share">
                   <p className="post-reader-aside__label">Share</p>
                   <p className="post-reader-aside__hint">Found this useful? Pass it along.</p>
-                  <ShareButton title={post.title} slug={post.slug} variant="light" className="w-full justify-center" />
+                  <ShareButton title={post.title} slug={post.slug} postId={post.id} variant="light" className="w-full justify-center" />
                 </div>
               </div>
             </aside>

@@ -1,7 +1,18 @@
 import type { Post, PostReference } from '../types/post'
 
 export function postReaderPath(slug: string): string {
-  return `/post/s/${slug}`
+  return `/post/s/${encodeURIComponent(slug)}`
+}
+
+export function postReaderPathFromPost(post: Pick<Post, 'id' | 'slug'>): string {
+  if (post.slug) return postReaderPath(post.slug)
+  return `/post/${encodeURIComponent(post.id)}`
+}
+
+export function postShareUrl(post: Pick<Post, 'id' | 'slug'>): string {
+  const path = postReaderPathFromPost(post)
+  if (typeof window === 'undefined') return path
+  return `${window.location.origin}${path}`
 }
 
 export function buildPostReference(post: Pick<Post, 'id' | 'title' | 'slug'>): PostReference {

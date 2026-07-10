@@ -1,19 +1,31 @@
 import { useState } from 'react'
 
+import { postShareUrl } from '../utils/postLinks'
+
 interface ShareButtonProps {
   title: string
   slug?: string
+  postId?: string
   shareUrl?: string
   label?: string
   variant?: 'light' | 'dark'
   className?: string
 }
 
-export default function ShareButton({ title, slug, shareUrl, label = 'Share', variant = 'dark', className = '' }: ShareButtonProps) {
+export default function ShareButton({
+  title,
+  slug,
+  postId,
+  shareUrl,
+  label = 'Share',
+  variant = 'dark',
+  className = '',
+}: ShareButtonProps) {
   const [copied, setCopied] = useState(false)
-  const url = typeof window !== 'undefined'
-    ? shareUrl ?? (slug ? `${window.location.origin}/post/s/${slug}` : window.location.href)
-    : ''
+  const url =
+    typeof window !== 'undefined'
+      ? shareUrl ?? (slug || postId ? postShareUrl({ id: postId ?? '', slug: slug ?? '' }) : window.location.href)
+      : ''
 
   const handleShare = async () => {
     if (navigator.share) {

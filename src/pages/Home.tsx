@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import ProfileHero from '../components/ProfileHero'
+import ProfileHero, { ProfileHeroSkeleton } from '../components/ProfileHero'
 import PostCard from '../components/PostCard'
 import SeriesCard from '../components/SeriesCard'
 import ContactCTA from '../components/ContactCTA'
@@ -10,7 +10,6 @@ import { getPublishedPosts, getPostsBySeriesId } from '../services/posts'
 import { getPublishedSeries } from '../services/series'
 import { getProfile } from '../services/profile'
 import { recordVisit } from '../services/analytics'
-import { DEFAULT_PROFILE } from '../types/profile'
 import type { Profile } from '../types/profile'
 import type { Post } from '../types/post'
 import type { Series } from '../types/series'
@@ -23,7 +22,7 @@ export default function Home({ portfolioUsername }: HomeProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [seriesList, setSeriesList] = useState<Series[]>([])
   const [seriesPostCounts, setSeriesPostCounts] = useState<Record<string, number>>({})
-  const [profile, setProfile] = useState<Profile>({ ...DEFAULT_PROFILE, updatedAt: new Date() })
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
@@ -56,9 +55,9 @@ export default function Home({ portfolioUsername }: HomeProps) {
   }, [portfolioUsername])
 
   useSEO({
-    title: profile.name,
-    description: profile.headline,
-    image: profile.avatarUrl || undefined,
+    title: profile?.name ?? 'Whatz',
+    description: profile?.headline,
+    image: profile?.avatarUrl || undefined,
     type: 'website',
   })
 
@@ -67,9 +66,10 @@ export default function Home({ portfolioUsername }: HomeProps) {
   const articles = posts.filter((p) => p.type !== 'project' && !p.seriesId && !p.pinned)
   const hasSeries = seriesList.length > 0 || legacyProjects.length > 0
 
-  const portfolioUrl = `${window.location.origin}/p/${profile.username}`
+  const portfolioUrl = profile ? `${window.location.origin}/p/${profile.username}` : ''
 
   const copyPortfolioLink = async () => {
+    if (!portfolioUrl) return
     await navigator.clipboard.writeText(portfolioUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -84,7 +84,8 @@ export default function Home({ portfolioUsername }: HomeProps) {
             <button
               type="button"
               onClick={copyPortfolioLink}
-              className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:border-neutral-500 hover:text-white sm:px-4"
+              disabled={!portfolioUrl}
+              className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
             >
               {copied ? 'Copied!' : 'Share link'}
             </button>
@@ -96,7 +97,11 @@ export default function Home({ portfolioUsername }: HomeProps) {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-        <ProfileHero profile={profile} portfolioUrl={portfolioUrl} />
+        {loading ? (
+          <ProfileHeroSkeleton />
+        ) : profile ? (
+          <ProfileHero profile={profile} portfolioUrl={portfolioUrl} />
+        ) : null}
 
         {loading && (
           <div className="mt-16 grid gap-4 sm:grid-cols-2">
@@ -170,7 +175,7 @@ export default function Home({ portfolioUsername }: HomeProps) {
               </div>
             </section>
 
-            <ContactCTA profile={profile} />
+            {profile && <ContactCTA profile={profile} />}
           </>
         )}
       </main>
