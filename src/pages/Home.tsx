@@ -63,7 +63,7 @@ export default function Home({ portfolioUsername }: HomeProps) {
 
   const pinned = posts.filter((p) => p.pinned)
   const legacyProjects = posts.filter((p) => p.type === 'project' && !p.seriesId && !p.pinned)
-  const articles = posts.filter((p) => p.type !== 'project' && !p.seriesId && !p.pinned)
+  const articles = posts.filter((p) => p.type !== 'project' && !p.pinned)
   const hasSeries = seriesList.length > 0 || legacyProjects.length > 0
 
   const portfolioUrl = profile ? `${window.location.origin}/p/${profile.username}` : ''
