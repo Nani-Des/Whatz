@@ -72,6 +72,7 @@ function getBlockType(editor: Editor): string {
   return 'paragraph'
 }
 
+import TableToolbar from './TableToolbar'
 import type { PostReference } from '../types/post'
 import { formatCitationLabel } from '../utils/citations'
 import { deferEditorTask } from '../utils/deferEditorTask'
@@ -433,7 +434,11 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         >
           <span className="text-[11px] font-semibold">📄</span>
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={inTable} title="Insert table">
+        <ToolbarButton
+          onClick={() => window.dispatchEvent(new CustomEvent('editor:open-table-insert'))}
+          active={inTable}
+          title="Insert table"
+        >
           <IconTable />
         </ToolbarButton>
 
@@ -455,13 +460,7 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         {inTable && (
           <>
             <Divider />
-            <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-md border border-gray-200 bg-white px-1 py-0.5">
-              <span className="px-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Table</span>
-              <button type="button" onClick={() => editor.chain().focus().addRowBefore().run()} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">+ Row ↑</button>
-              <button type="button" onClick={() => editor.chain().focus().addRowAfter().run()} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">+ Row ↓</button>
-              <button type="button" onClick={() => editor.chain().focus().deleteRow().run()} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">− Row</button>
-              <button type="button" onClick={() => editor.chain().focus().deleteTable().run()} className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50">Delete</button>
-            </div>
+            <TableToolbar editor={editor} />
           </>
         )}
       </div>

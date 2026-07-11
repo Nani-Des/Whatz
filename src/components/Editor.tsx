@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import Toolbar from './Toolbar'
 import EquationEditor from './EquationEditor'
+import TableInsertDialog, { type TableInsertOptions } from './TableInsertDialog'
 import { createEditorExtensions } from '../lib/tiptapExtensions'
 import { DEFAULT_FONT_SIZE } from '../lib/fontSizeExtension'
 import type { PostReference } from '../types/post'
@@ -35,6 +36,7 @@ export default function Editor({
   const getCitationNumberRef = useRef<(refId: string) => number | null>(() => null)
   const [equationOpen, setEquationOpen] = useState(false)
   const [equationDraft, setEquationDraft] = useState({ latex: '', display: false })
+  const [tableInsertOpen, setTableInsertOpen] = useState(false)
   const equationSaveRef = useRef<((latex: string, display: boolean) => void) | null>(null)
 
   onSaveRef.current = onSave
@@ -149,9 +151,12 @@ export default function Editor({
       window.dispatchEvent(new CustomEvent('editor:open-post-picker', { detail: { mode: 'inline' } }))
     }
 
+    const openTableInsert = () => setTableInsertOpen(true)
+
     window.addEventListener('editor:open-equation', openEquation)
     window.addEventListener('editor:edit-math', editEquation)
     window.addEventListener('editor:insert-math', insertMath)
+    window.addEventListener('editor:open-table-insert', openTableInsert)
     window.addEventListener('editor:insert-image', handleInsertImage)
     window.addEventListener('editor:insert-video', handleInsertVideo)
     window.addEventListener('editor:insert-post-link', handleInsertPostLink)
@@ -162,6 +167,7 @@ export default function Editor({
       window.removeEventListener('editor:open-equation', openEquation)
       window.removeEventListener('editor:edit-math', editEquation)
       window.removeEventListener('editor:insert-math', insertMath)
+      window.removeEventListener('editor:open-table-insert', openTableInsert)
       window.removeEventListener('editor:insert-image', handleInsertImage)
       window.removeEventListener('editor:insert-video', handleInsertVideo)
       window.removeEventListener('editor:insert-post-link', handleInsertPostLink)
@@ -182,6 +188,11 @@ export default function Editor({
     if (!editor) return
     if (display) editor.chain().focus().insertMathBlock({ latex }).run()
     else editor.chain().focus().insertMathInline({ latex }).run()
+  }
+
+  const handleTableInsert = ({ rows, cols, withHeaderRow }: TableInsertOptions) => {
+    if (!editor) return
+    editor.chain().focus().insertTable({ rows, cols, withHeaderRow }).run()
   }
 
   return (
@@ -209,6 +220,11 @@ export default function Editor({
           equationSaveRef.current = null
         }}
         onSubmit={handleEquationSubmit}
+      />
+      <TableInsertDialog
+        open={tableInsertOpen}
+        onClose={() => setTableInsertOpen(false)}
+        onSubmit={handleTableInsert}
       />
     </>
   )

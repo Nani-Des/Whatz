@@ -13,7 +13,10 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     const title = window.prompt('Section title (shown in the header)', 'Section title')
     if (title !== null) editor.chain().focus().setCollapsible(title.trim() || 'Section title').run()
   } },
-  { title: 'Table', description: 'Insert a 3×3 table', icon: '⊞', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  { title: 'Table', description: 'Insert a table with custom rows and columns', icon: '⊞', command: ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).run()
+    window.dispatchEvent(new CustomEvent('editor:open-table-insert'))
+  } },
   { title: 'Image', description: 'Upload or link an image', icon: '🖼', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:insert-image')) } },
   { title: 'Video', description: 'Upload or embed a video', icon: '🎬', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:insert-video')) } },
   { title: 'Post link', description: 'Link to another portfolio post', icon: '📄', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:pick-post-link')) } },
