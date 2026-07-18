@@ -36,6 +36,9 @@ export default function GalleryEditorView({ node, updateAttributes, selected, de
       const added: GalleryItem[] = []
       for (const file of Array.from(files)) {
         const src = await upload(file)
+        if (src.startsWith('blob:')) {
+          throw new Error('Upload did not finish. Save the draft and try again.')
+        }
         added.push(
           createGalleryItem(type, src, {
             alt: file.name,
@@ -44,8 +47,8 @@ export default function GalleryEditorView({ node, updateAttributes, selected, de
         )
       }
       setItems([...items, ...added])
-    } catch {
-      setError(type === 'image' ? 'Image upload failed.' : 'Video upload failed.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : type === 'image' ? 'Image upload failed.' : 'Video upload failed.')
     } finally {
       setUploading(false)
       if (imageInputRef.current) imageInputRef.current.value = ''

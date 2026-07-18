@@ -54,8 +54,12 @@ export const Gallery = Node.create<GalleryOptions>({
 
   addOptions() {
     return {
-      uploadImage: async (file: File) => URL.createObjectURL(file),
-      uploadVideo: async (file: File) => URL.createObjectURL(file),
+      uploadImage: async () => {
+        throw new Error('Image upload is not configured.')
+      },
+      uploadVideo: async () => {
+        throw new Error('Video upload is not configured.')
+      },
     }
   },
 

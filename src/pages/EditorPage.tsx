@@ -25,6 +25,14 @@ function versionFingerprint(snapshot: VersionSnapshot): string {
   return `${snapshot.title}\0${snapshot.content}\0${snapshot.excerpt}\0${snapshot.tags.join('\t')}`
 }
 
+function assertNoBlobUrls(content: string) {
+  if (content.includes('blob:')) {
+    throw new Error(
+      'Some media uses temporary browser URLs and cannot be saved. Re-add gallery photos or videos, then save again.',
+    )
+  }
+}
+
 function toVersionSnapshot(data: PostInput): VersionSnapshot {
   return {
     title: data.title,
@@ -295,6 +303,7 @@ export default function EditorPage() {
     if (!silent) setSaveMessage('Saving…')
 
     try {
+      assertNoBlobUrls(data.content)
       let currentId = postIdRef.current
       if (currentId) {
         await updatePost(currentId, data)
@@ -362,6 +371,7 @@ export default function EditorPage() {
     setSaving(true)
     setSaveMessage('Publishing…')
     try {
+      assertNoBlobUrls(data.content)
       if (postId) {
         await updatePost(postId, { ...data, scheduledPublishAt: null })
       } else {
@@ -387,6 +397,7 @@ export default function EditorPage() {
     const data = buildPostData(fieldsRef.current)
     setSaving(true)
     try {
+      assertNoBlobUrls(data.content)
       if (postId) await updatePost(postId, data)
       else {
         const newId = await createPost(data)

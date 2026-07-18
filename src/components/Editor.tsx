@@ -90,22 +90,37 @@ export default function Editor({
     if (citation) {
       citation.options.getCitationNumber = (refId: string) => getCitationNumberRef.current(refId)
     }
-    const gallery = editor.extensionManager.extensions.find((e) => e.name === 'gallery')
-    if (gallery) {
-      gallery.options.uploadImage = async (file: File) => {
-        if (!onImageUploadRef.current) return URL.createObjectURL(file)
-        return onImageUploadRef.current(file)
-      }
-      gallery.options.uploadVideo = async (file: File) => {
-        if (!onVideoUploadRef.current) return URL.createObjectURL(file)
-        return onVideoUploadRef.current(file)
-      }
-    }
     deferEditorTask(() => {
       if (editor.isDestroyed) return
       editor.view.dispatch(editor.state.tr)
     })
   }, [references, editor])
+
+  useEffect(() => {
+    if (!editor) return
+    const gallery = editor.extensionManager.extensions.find((e) => e.name === 'gallery')
+    if (!gallery) return
+
+    const rejectBlobUrl = (url: string, label: string) => {
+      if (url.startsWith('blob:')) {
+        throw new Error(`${label} upload did not finish. Save the draft and try again.`)
+      }
+      return url
+    }
+
+    gallery.options.uploadImage = async (file: File) => {
+      if (!onImageUploadRef.current) {
+        throw new Error('Save the draft first, then add gallery photos.')
+      }
+      return rejectBlobUrl(await onImageUploadRef.current(file), 'Photo')
+    }
+    gallery.options.uploadVideo = async (file: File) => {
+      if (!onVideoUploadRef.current) {
+        throw new Error('Save the draft first, then add gallery videos.')
+      }
+      return rejectBlobUrl(await onVideoUploadRef.current(file), 'Video')
+    }
+  }, [editor, onImageUpload, onVideoUpload])
 
   useEffect(() => {
     if (!editor || isInternalUpdate.current) {
