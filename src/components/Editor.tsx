@@ -6,6 +6,8 @@ import TableInsertDialog, { type TableInsertOptions } from './TableInsertDialog'
 import { createEditorExtensions } from '../lib/tiptapExtensions'
 import { DEFAULT_FONT_SIZE } from '../lib/fontSizeExtension'
 import type { PostReference } from '../types/post'
+import type { UploadedImageUrls, UploadedVideoUrls } from '../types/media'
+import { isUploadedImageUrls, isUploadedVideoUrls } from '../types/media'
 import { createCitationNumberResolver } from '../utils/citations'
 import { deferEditorTask } from '../utils/deferEditorTask'
 
@@ -15,8 +17,8 @@ interface EditorProps {
   postId?: string | null
   references?: PostReference[]
   onSave?: () => void
-  onImageUpload?: (file: File) => Promise<string>
-  onVideoUpload?: (file: File) => Promise<string>
+  onImageUpload?: (file: File) => Promise<string | UploadedImageUrls>
+  onVideoUpload?: (file: File) => Promise<string | UploadedVideoUrls>
 }
 
 export default function Editor({
@@ -101,24 +103,27 @@ export default function Editor({
     const gallery = editor.extensionManager.extensions.find((e) => e.name === 'gallery')
     if (!gallery) return
 
-    const rejectBlobUrl = (url: string, label: string) => {
-      if (url.startsWith('blob:')) {
-        throw new Error(`${label} upload did not finish. Save the draft and try again.`)
-      }
-      return url
-    }
-
     gallery.options.uploadImage = async (file: File) => {
       if (!onImageUploadRef.current) {
         throw new Error('Save the draft first, then add gallery photos.')
       }
-      return rejectBlobUrl(await onImageUploadRef.current(file), 'Photo')
+      const result = await onImageUploadRef.current(file)
+      if (isUploadedImageUrls(result)) return result
+      if (result.startsWith('blob:')) {
+        throw new Error('Photo upload did not finish. Save the draft and try again.')
+      }
+      return result
     }
     gallery.options.uploadVideo = async (file: File) => {
       if (!onVideoUploadRef.current) {
         throw new Error('Save the draft first, then add gallery videos.')
       }
-      return rejectBlobUrl(await onVideoUploadRef.current(file), 'Video')
+      const result = await onVideoUploadRef.current(file)
+      if (isUploadedVideoUrls(result)) return result
+      if (result.startsWith('blob:')) {
+        throw new Error('Video upload did not finish. Save the draft and try again.')
+      }
+      return result
     }
   }, [editor, onImageUpload, onVideoUpload])
 

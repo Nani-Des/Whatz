@@ -11,6 +11,7 @@ import AnimationSettingsPanel from '../components/AnimationSettingsPanel'
 import { createPost, getPostForEdit, getPostsBySeriesId, updatePost } from '../services/posts'
 import { savePostVersion } from '../services/versions'
 import { uploadEditorImage, uploadEditorVideo, uploadPostCover } from '../services/storage'
+import type { UploadedImageUrls, UploadedVideoUrls } from '../types/media'
 import type { Post, PostAnimationSettings, PostInput, PostReference, PostStatus, PostType, PostVersion } from '../types/post'
 import type { SeriesRole } from '../types/series'
 import { DEFAULT_POST_ANIMATION } from '../types/post'
@@ -428,12 +429,12 @@ export default function EditorPage() {
     }
   }
 
-  const handleImageUpload = async (file: File): Promise<string> => {
+  const handleImageUpload = async (file: File): Promise<UploadedImageUrls> => {
     const pid = await ensurePostId()
     return uploadEditorImage(pid, file)
   }
 
-  const handleVideoUpload = async (file: File): Promise<string> => {
+  const handleVideoUpload = async (file: File): Promise<UploadedVideoUrls> => {
     const pid = await ensurePostId()
     return uploadEditorVideo(pid, file)
   }
@@ -449,9 +450,9 @@ export default function EditorPage() {
   const handleCoverUpload = async (file: File) => {
     try {
       const pid = await ensurePostId()
-      const url = await uploadPostCover(pid, file)
-      setCoverImageUrl(url)
-      if (!ogImageUrl) setOgImageUrl(url)
+      const urls = await uploadPostCover(pid, file)
+      setCoverImageUrl(urls.full)
+      if (!ogImageUrl) setOgImageUrl(urls.full)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Cover upload failed.')
     }

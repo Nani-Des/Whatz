@@ -39,6 +39,16 @@ export const ResizableImage = Image.extend({
           return el.getAttribute('data-height') || el.getAttribute('height') || el.style.height || null
         },
       },
+      srcMd: {
+        default: null,
+        parseHTML: (element) => (element as HTMLElement).getAttribute('data-src-md'),
+        renderHTML: (attrs) => (attrs.srcMd ? { 'data-src-md': attrs.srcMd } : {}),
+      },
+      srcSm: {
+        default: null,
+        parseHTML: (element) => (element as HTMLElement).getAttribute('data-src-sm'),
+        renderHTML: (attrs) => (attrs.srcSm ? { 'data-src-sm': attrs.srcSm } : {}),
+      },
     }
   },
 

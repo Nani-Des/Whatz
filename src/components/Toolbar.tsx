@@ -74,6 +74,7 @@ function getBlockType(editor: Editor): string {
 
 import TableToolbar from './TableToolbar'
 import type { PostReference } from '../types/post'
+import { isUploadedImageUrls, isUploadedVideoUrls } from '../types/media'
 import { formatCitationLabel } from '../utils/citations'
 import { deferEditorTask } from '../utils/deferEditorTask'
 
@@ -81,8 +82,8 @@ interface ToolbarProps {
   editor: Editor | null
   postId?: string | null
   references?: PostReference[]
-  onImageUpload?: (file: File) => Promise<string>
-  onVideoUpload?: (file: File) => Promise<string>
+  onImageUpload?: (file: File) => Promise<string | import('../types/media').UploadedImageUrls>
+  onVideoUpload?: (file: File) => Promise<string | import('../types/media').UploadedVideoUrls>
 }
 
 export default function Toolbar({ editor, onImageUpload, onVideoUpload, references = [] }: ToolbarProps) {
@@ -161,8 +162,15 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
   const handleImageFile = async (file: File) => {
     if (onImageUploadRef.current) {
       try {
-        const url = await onImageUploadRef.current(file)
-        editor.chain().focus().setImage({ src: url }).run()
+        const result = await onImageUploadRef.current(file)
+        if (isUploadedImageUrls(result)) {
+          editor.chain().focus().insertContent({
+            type: 'image',
+            attrs: { src: result.full, srcMd: result.medium, srcSm: result.small },
+          }).run()
+        } else {
+          editor.chain().focus().setImage({ src: result }).run()
+        }
       } catch {
         alert('Image upload failed. Save the post first or check Firebase Storage.')
       }
@@ -175,8 +183,12 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
   const handleVideoFile = async (file: File) => {
     if (onVideoUploadRef.current) {
       try {
-        const url = await onVideoUploadRef.current(file)
-        editor.chain().focus().setVideo({ src: url, title: file.name }).run()
+        const result = await onVideoUploadRef.current(file)
+        if (isUploadedVideoUrls(result)) {
+          editor.chain().focus().setVideo({ src: result.url, poster: result.poster, title: file.name }).run()
+        } else {
+          editor.chain().focus().setVideo({ src: result, title: file.name }).run()
+        }
       } catch {
         alert('Video upload failed. Save the post first or check Firebase Storage.')
       }

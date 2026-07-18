@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import ResponsiveImage, { CARD_SIZES } from './ResponsiveImage'
 import type { Series } from '../types/series'
 import { seriesHubPath } from '../utils/series'
 
@@ -17,7 +18,13 @@ export default function SeriesCard({ series, postCount }: SeriesCardProps) {
     }`}>
       <Link to={seriesHubPath(series.slug)} className="block">
         {series.coverImageUrl && (
-          <img src={series.coverImageUrl} alt="" className="h-40 w-full object-cover" loading="lazy" decoding="async" />
+          <ResponsiveImage
+            src={series.coverImageUrl}
+            alt=""
+            className="h-40 w-full object-cover"
+            preferredSize="small"
+            sizes={CARD_SIZES}
+          />
         )}
         <div className="p-6 sm:p-7">
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">

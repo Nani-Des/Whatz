@@ -1,13 +1,70 @@
-import { createRoot, type Root } from 'react-dom/client'
-import { createElement } from 'react'
-import VideoPlayer from '../components/VideoPlayer'
 import { isBrokenMediaUrl, sanitizeBrokenMediaHtml } from './brokenMediaUrls'
+import { ARTICLE_SIZES, buildImageSrcSet, GALLERY_SIZES } from './mediaUrls'
 
-const LAZY_ROOT_MARGIN = '320px 0px'
+const LAZY_ROOT_MARGIN = '400px 0px'
 const LAZY_THRESHOLD = 0.01
+const EAGER_GALLERY_IMAGES = 3
 
-function mountGalleryVideo(el: HTMLElement, roots: Root[]): void {
-  if (el.querySelector('.post-video-player')) return
+function parsePixelDimension(value: string | null | undefined): number | null {
+  if (!value) return null
+  const match = String(value).trim().match(/^(\d+(?:\.\d+)?)px$/)
+  return match ? Math.round(Number(match[1])) : null
+}
+
+function applyResponsiveAttrs(
+  img: Element,
+  sizes: string,
+  eager = false,
+): void {
+  const full = img.getAttribute('data-lazy-src') || img.getAttribute('src')
+  if (!full || isBrokenMediaUrl(full)) return
+
+  const srcMd = img.getAttribute('data-src-md') || undefined
+  const srcSm = img.getAttribute('data-src-sm') || undefined
+  const srcSet = buildImageSrcSet(full, { medium: srcMd, small: srcSm })
+
+  if (srcSet) {
+    img.setAttribute('srcset', srcSet)
+    img.setAttribute('sizes', sizes)
+  }
+
+  if (eager) {
+    img.setAttribute('data-fetch-priority', 'high')
+    img.setAttribute('loading', 'eager')
+  } else {
+    img.setAttribute('loading', 'lazy')
+  }
+}
+
+function applyLayoutDimensions(img: Element): void {
+  const width = parsePixelDimension(img.getAttribute('data-width') || img.getAttribute('width'))
+  const height = parsePixelDimension(img.getAttribute('data-height') || img.getAttribute('height'))
+  if (width) img.setAttribute('width', String(width))
+  if (height) img.setAttribute('height', String(height))
+}
+
+function mountNativeVideo(
+  container: HTMLElement,
+  src: string,
+  poster?: string,
+  title?: string,
+): void {
+  container.innerHTML = ''
+  container.classList.add('post-video-embed--ready')
+
+  const video = document.createElement('video')
+  video.className = 'post-video-native'
+  video.src = src
+  video.controls = true
+  video.playsInline = true
+  video.preload = 'none'
+  if (poster) video.poster = poster
+  if (title) video.title = title
+  container.appendChild(video)
+}
+
+function mountGalleryVideo(el: HTMLElement): void {
+  if (el.querySelector('video')) return
   const src = el.getAttribute('data-src')
   if (!src || isBrokenMediaUrl(src)) return
 
@@ -19,26 +76,18 @@ function mountGalleryVideo(el: HTMLElement, roots: Root[]): void {
   const mount = document.createElement('div')
   mount.className = 'post-gallery__video-mount'
   el.appendChild(mount)
-
-  const root = createRoot(mount)
-  root.render(createElement(VideoPlayer, { src, poster, title: caption }))
-  roots.push(root)
+  mountNativeVideo(mount, src, poster, caption)
 }
 
-function mountInlineVideo(figure: HTMLElement, roots: Root[]): void {
-  if (figure.querySelector('.post-video-player')) return
+function mountInlineVideo(figure: HTMLElement): void {
+  if (figure.querySelector('video')) return
 
   const src = figure.getAttribute('data-src')
   if (!src || isBrokenMediaUrl(src)) return
 
   const poster = figure.getAttribute('data-poster') || undefined
   const title = figure.getAttribute('data-title') || undefined
-  figure.innerHTML = ''
-  figure.classList.add('post-video-embed--ready')
-
-  const root = createRoot(figure)
-  root.render(createElement(VideoPlayer, { src, poster, title }))
-  roots.push(root)
+  mountNativeVideo(figure, src, poster, title)
 }
 
 function loadLazyImage(img: HTMLImageElement): void {
@@ -63,19 +112,29 @@ function loadLazyImage(img: HTMLImageElement): void {
 export function prepareLazyMediaHtml(html: string): string {
   const doc = new DOMParser().parseFromString(sanitizeBrokenMediaHtml(html), 'text/html')
   let firstInlineImage = true
+  let galleryImageIndex = 0
 
   doc.querySelectorAll('img[src]').forEach((img) => {
     const src = img.getAttribute('src')
     if (!src || src.startsWith('data:') || isBrokenMediaUrl(src)) return
 
-    img.setAttribute('data-lazy-src', src)
-    img.removeAttribute('src')
-    img.classList.add('post-lazy-image')
-    img.setAttribute('decoding', 'async')
-    img.setAttribute('loading', 'lazy')
+    const inGallery = Boolean(img.closest('[data-type="gallery"]'))
+    const eagerGallery = inGallery && galleryImageIndex < EAGER_GALLERY_IMAGES
+    if (inGallery) galleryImageIndex += 1
 
-    if (firstInlineImage && !img.closest('[data-type="gallery"]')) {
+    if (!eagerGallery) {
+      img.setAttribute('data-lazy-src', src)
+      img.removeAttribute('src')
+      img.classList.add('post-lazy-image')
+    }
+
+    img.setAttribute('decoding', 'async')
+    applyLayoutDimensions(img)
+    applyResponsiveAttrs(img, inGallery ? GALLERY_SIZES : ARTICLE_SIZES, eagerGallery)
+
+    if (!inGallery && firstInlineImage) {
       img.setAttribute('data-fetch-priority', 'high')
+      if (!eagerGallery) img.setAttribute('loading', 'lazy')
       firstInlineImage = false
     }
   })
@@ -97,7 +156,6 @@ export function prepareLazyMediaHtml(html: string): string {
 }
 
 export function hydrateLazyMedia(container: HTMLElement): () => void {
-  const roots: Root[] = []
   let cancelled = false
 
   const observer = new IntersectionObserver(
@@ -117,13 +175,13 @@ export function hydrateLazyMedia(container: HTMLElement): () => void {
         if (!(target instanceof HTMLElement)) return
 
         if (target.matches('figure[data-type="video"][data-src]')) {
-          mountInlineVideo(target, roots)
+          mountInlineVideo(target)
           observer.unobserve(target)
           return
         }
 
         if (target.matches('.post-gallery__item--video[data-src]')) {
-          mountGalleryVideo(target, roots)
+          mountGalleryVideo(target)
           observer.unobserve(target)
         }
       })
@@ -146,6 +204,5 @@ export function hydrateLazyMedia(container: HTMLElement): () => void {
   return () => {
     cancelled = true
     observer.disconnect()
-    roots.forEach((root) => root.unmount())
   }
 }

@@ -82,8 +82,8 @@ export default function AdminSeriesEditor() {
         setSeriesId(sid)
         navigate(`/dashboard/series/${sid}`, { replace: true })
       }
-      const url = await uploadSeriesCover(sid, file)
-      setForm((prev) => ({ ...prev, coverImageUrl: url }))
+      const urls = await uploadSeriesCover(sid, file)
+      setForm((prev) => ({ ...prev, coverImageUrl: urls.full }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Cover upload failed.')
     }

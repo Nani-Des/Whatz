@@ -6,6 +6,7 @@ interface SEOOptions {
   image?: string
   url?: string
   type?: string
+  preloadImage?: boolean
 }
 
 function setMeta(name: string, content: string, property = false) {
@@ -19,7 +20,7 @@ function setMeta(name: string, content: string, property = false) {
   el.content = content
 }
 
-export function useSEO({ title, description, image, url, type = 'article' }: SEOOptions) {
+export function useSEO({ title, description, image, url, type = 'article', preloadImage = true }: SEOOptions) {
   useEffect(() => {
     const fullTitle = title.includes('Whatz') ? title : `${title} · Whatz`
     document.title = fullTitle
@@ -42,11 +43,13 @@ export function useSEO({ title, description, image, url, type = 'article' }: SEO
       setMeta('og:image', image, true)
       setMeta('twitter:card', 'summary_large_image')
       setMeta('twitter:image', image)
-      preloadLink = document.createElement('link')
-      preloadLink.rel = 'preload'
-      preloadLink.as = 'image'
-      preloadLink.href = image
-      document.head.appendChild(preloadLink)
+      if (preloadImage) {
+        preloadLink = document.createElement('link')
+        preloadLink.rel = 'preload'
+        preloadLink.as = 'image'
+        preloadLink.href = image
+        document.head.appendChild(preloadLink)
+      }
     } else {
       setMeta('twitter:card', 'summary')
     }
@@ -55,5 +58,5 @@ export function useSEO({ title, description, image, url, type = 'article' }: SEO
       document.title = 'Whatz'
       preloadLink?.remove()
     }
-  }, [title, description, image, url, type])
+  }, [title, description, image, url, type, preloadImage])
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import ResponsiveImage, { COVER_SIZES } from '../components/ResponsiveImage'
 import PostAmbientBackground from '../components/PostAmbientBackground'
 import { Link, useParams } from 'react-router-dom'
 import PostContent from '../components/PostContent'
@@ -89,6 +90,7 @@ export default function PostView() {
     description: post?.seoDescription || post?.excerpt,
     image: post?.ogImageUrl || post?.coverImageUrl,
     url: post ? postShareUrl(post) : undefined,
+    preloadImage: false,
   })
 
   const readingTime = post ? getReadingTime(post.content) : 0
@@ -215,12 +217,13 @@ export default function PostView() {
               {post.coverImageUrl && (
                 <figure className={`post-reader-cover${anim?.coverKenBurns ? ' post-reader-cover--animated' : ''}`}>
                   <div className="post-reader-cover__frame">
-                    <img
+                    <ResponsiveImage
                       src={post.coverImageUrl}
                       alt=""
                       loading="eager"
-                      decoding="async"
                       fetchPriority="high"
+                      preferredSize="medium"
+                      sizes={COVER_SIZES}
                     />
                   </div>
                 </figure>

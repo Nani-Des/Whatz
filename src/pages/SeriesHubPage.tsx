@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import ResponsiveImage, { COVER_SIZES } from '../components/ResponsiveImage'
 import FirestoreSetupBanner from '../components/FirestoreSetupBanner'
 import ShareButton from '../components/ShareButton'
 import { postUrl } from '../components/PostCard'
@@ -87,7 +88,14 @@ export default function SeriesHubPage() {
             <div className="series-hub-hero">
               {series.coverImageUrl && (
                 <figure className="series-hub-hero__cover">
-                  <img src={series.coverImageUrl} alt="" />
+                  <ResponsiveImage
+                    src={series.coverImageUrl}
+                    alt=""
+                    loading="eager"
+                    fetchPriority="high"
+                    preferredSize="medium"
+                    sizes={COVER_SIZES}
+                  />
                 </figure>
               )}
               <div className="series-hub-hero__body">

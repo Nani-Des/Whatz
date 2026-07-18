@@ -2346,6 +2346,18 @@
     min-height: 10rem;
   }
 
+  .post-video-native {
+    display: block;
+    width: 100%;
+    max-height: 28rem;
+    border-radius: 0.75rem;
+    background: #000;
+  }
+
+  .post-gallery__video-mount .post-video-native {
+    max-height: 16rem;
+  }
+
   .post-video-embed {
     margin: 1.75rem 0;
     border-radius: 0.875rem;

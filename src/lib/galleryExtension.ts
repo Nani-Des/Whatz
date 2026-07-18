@@ -9,8 +9,8 @@ import {
 } from '../types/gallery'
 
 export interface GalleryOptions {
-  uploadImage: (file: File) => Promise<string>
-  uploadVideo: (file: File) => Promise<string>
+  uploadImage: (file: File) => Promise<string | { full: string; medium: string; small: string }>
+  uploadVideo: (file: File) => Promise<string | { url: string; poster?: string }>
 }
 
 declare module '@tiptap/core' {
@@ -37,7 +37,17 @@ function renderGalleryItem(item: GalleryItem) {
   }
 
   const children: unknown[] = [
-    ['img', { src: item.src, alt: item.alt || '', loading: 'lazy', decoding: 'async' }],
+    [
+      'img',
+      {
+        src: item.src,
+        alt: item.alt || '',
+        loading: 'lazy',
+        decoding: 'async',
+        ...(item.srcMd ? { 'data-src-md': item.srcMd } : {}),
+        ...(item.srcSm ? { 'data-src-sm': item.srcSm } : {}),
+      },
+    ],
   ]
   if (item.caption) {
     children.push(['figcaption', { class: 'post-gallery__caption' }, item.caption])

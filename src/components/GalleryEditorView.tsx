@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { NodeViewWrapper } from '@tiptap/react'
 import type { NodeViewProps } from '@tiptap/react'
 import type { GalleryOptions } from '../lib/galleryExtension'
+import { isUploadedImageUrls, isUploadedVideoUrls } from '../types/media'
 import {
   createGalleryItem,
   type GalleryColumns,
@@ -35,16 +36,38 @@ export default function GalleryEditorView({ node, updateAttributes, selected, de
     try {
       const added: GalleryItem[] = []
       for (const file of Array.from(files)) {
-        const src = await upload(file)
-        if (src.startsWith('blob:')) {
+        const result = await upload(file)
+        if (type === 'image') {
+          if (isUploadedImageUrls(result)) {
+            added.push(
+              createGalleryItem('image', result.full, {
+                alt: file.name,
+                srcMd: result.medium,
+                srcSm: result.small,
+              }),
+            )
+            continue
+          }
+          if (typeof result === 'string' && result.startsWith('blob:')) {
+            throw new Error('Upload did not finish. Save the draft and try again.')
+          }
+          added.push(createGalleryItem('image', result as string, { alt: file.name }))
+          continue
+        }
+
+        if (isUploadedVideoUrls(result)) {
+          added.push(
+            createGalleryItem('video', result.url, {
+              alt: file.name,
+              poster: result.poster,
+            }),
+          )
+          continue
+        }
+        if (typeof result === 'string' && result.startsWith('blob:')) {
           throw new Error('Upload did not finish. Save the draft and try again.')
         }
-        added.push(
-          createGalleryItem(type, src, {
-            alt: file.name,
-            poster: type === 'video' ? undefined : undefined,
-          }),
-        )
+        added.push(createGalleryItem('video', result as string, { alt: file.name }))
       }
       setItems([...items, ...added])
     } catch (err) {

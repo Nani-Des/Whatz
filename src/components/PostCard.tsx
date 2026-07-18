@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import ResponsiveImage, { CARD_SIZES } from './ResponsiveImage'
 import type { Post } from '../types/post'
 import { getExcerpt } from '../utils/excerpt'
 import { formatDate } from '../utils/formatDate'
@@ -25,7 +26,13 @@ export default function PostCard({ post, seriesHint }: PostCardProps) {
     }`}>
       <Link to={postUrl(post)} className="block">
         {post.coverImageUrl && (
-          <img src={post.coverImageUrl} alt="" className="h-40 w-full object-cover" loading="lazy" decoding="async" />
+          <ResponsiveImage
+            src={post.coverImageUrl}
+            alt=""
+            className="h-40 w-full object-cover"
+            preferredSize="small"
+            sizes={CARD_SIZES}
+          />
         )}
         <div className="p-6 sm:p-7">
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">

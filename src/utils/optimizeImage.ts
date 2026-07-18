@@ -4,11 +4,24 @@ export interface OptimizeImageOptions {
   skipUnderBytes?: number
 }
 
-const DEFAULTS: Required<OptimizeImageOptions> = {
-  maxDimension: 1920,
-  quality: 0.82,
-  skipUnderBytes: 350_000,
+export interface ImageVariantFiles {
+  full: File
+  medium: File
+  small: File
 }
+
+const VARIANT_PRESETS = {
+  inline: {
+    full: { maxDimension: 1920, quality: 0.88 },
+    medium: { maxDimension: 960, quality: 0.85 },
+    small: { maxDimension: 480, quality: 0.82 },
+  },
+  cover: {
+    full: { maxDimension: 2400, quality: 0.9 },
+    medium: { maxDimension: 1200, quality: 0.87 },
+    small: { maxDimension: 640, quality: 0.84 },
+  },
+} as const
 
 function isOptimizableImage(file: File): boolean {
   if (!file.type.startsWith('image/')) return false
@@ -16,16 +29,11 @@ function isOptimizableImage(file: File): boolean {
   return true
 }
 
-/** Resize and compress photos before upload so readers download smaller files. */
-export async function optimizeImageForUpload(
+async function renderImageVariant(
   file: File,
-  options: OptimizeImageOptions = {},
+  { maxDimension, quality }: Required<Pick<OptimizeImageOptions, 'maxDimension' | 'quality'>>,
+  label: string,
 ): Promise<File> {
-  if (!isOptimizableImage(file)) return file
-
-  const { maxDimension, quality, skipUnderBytes } = { ...DEFAULTS, ...options }
-  if (file.size < skipUnderBytes) return file
-
   let bitmap: ImageBitmap | null = null
   try {
     bitmap = await createImageBitmap(file)
@@ -37,11 +45,6 @@ export async function optimizeImageForUpload(
   const scale = Math.min(1, maxDimension / Math.max(width, height))
   const targetWidth = Math.max(1, Math.round(width * scale))
   const targetHeight = Math.max(1, Math.round(height * scale))
-
-  if (scale >= 1 && file.type === 'image/webp' && file.size < skipUnderBytes * 2) {
-    bitmap.close()
-    return file
-  }
 
   const canvas = document.createElement('canvas')
   canvas.width = targetWidth
@@ -59,8 +62,32 @@ export async function optimizeImageForUpload(
     canvas.toBlob(resolve, 'image/webp', quality)
   })
 
-  if (!blob || blob.size >= file.size * 0.95) return file
+  if (!blob) return file
 
   const baseName = file.name.replace(/\.[^.]+$/, '') || 'image'
-  return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: file.lastModified })
+  return new File([blob], `${baseName}${label}.webp`, { type: 'image/webp', lastModified: file.lastModified })
+}
+
+/** Produce full / medium / small WebP variants for faster, right-sized delivery. */
+export async function generateImageVariants(file: File, cover = false): Promise<ImageVariantFiles | null> {
+  if (!isOptimizableImage(file)) return null
+  const preset = cover ? VARIANT_PRESETS.cover : VARIANT_PRESETS.inline
+
+  const [full, medium, small] = await Promise.all([
+    renderImageVariant(file, preset.full, ''),
+    renderImageVariant(file, preset.medium, '-md'),
+    renderImageVariant(file, preset.small, '-sm'),
+  ])
+
+  return { full, medium, small }
+}
+
+/** Backward-compatible single-file optimization for non-variant uploads. */
+export async function optimizeImageForUpload(
+  file: File,
+  options: OptimizeImageOptions = {},
+): Promise<File> {
+  const cover = options.maxDimension != null && options.maxDimension >= 2400
+  const variants = await generateImageVariants(file, cover)
+  return variants?.full ?? file
 }
