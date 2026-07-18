@@ -7,6 +7,7 @@ import {
   type GalleryLayout,
   parseGalleryItems,
 } from '../types/gallery'
+import { galleryUploadBridge } from './galleryUploadBridge'
 
 export interface GalleryOptions {
   uploadImage: (file: File) => Promise<string | { full: string; medium: string; small: string }>
@@ -64,11 +65,17 @@ export const Gallery = Node.create<GalleryOptions>({
 
   addOptions() {
     return {
-      uploadImage: async () => {
-        throw new Error('Image upload is not configured.')
+      uploadImage: async (file: File) => {
+        if (!galleryUploadBridge.uploadImage) {
+          throw new Error('Save the draft first, then add gallery photos.')
+        }
+        return galleryUploadBridge.uploadImage(file)
       },
-      uploadVideo: async () => {
-        throw new Error('Video upload is not configured.')
+      uploadVideo: async (file: File) => {
+        if (!galleryUploadBridge.uploadVideo) {
+          throw new Error('Save the draft first, then add gallery videos.')
+        }
+        return galleryUploadBridge.uploadVideo(file)
       },
     }
   },

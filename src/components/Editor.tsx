@@ -10,6 +10,7 @@ import type { UploadedImageUrls, UploadedVideoUrls } from '../types/media'
 import { isUploadedImageUrls, isUploadedVideoUrls } from '../types/media'
 import { createCitationNumberResolver } from '../utils/citations'
 import { deferEditorTask } from '../utils/deferEditorTask'
+import { galleryUploadBridge } from '../lib/galleryUploadBridge'
 
 interface EditorProps {
   content: string
@@ -46,6 +47,28 @@ export default function Editor({
   onVideoUploadRef.current = onVideoUpload
   referencesRef.current = references
   getCitationNumberRef.current = createCitationNumberResolver(references)
+
+  galleryUploadBridge.uploadImage = onImageUpload
+    ? async (file: File) => {
+        const result = await onImageUploadRef.current!(file)
+        if (isUploadedImageUrls(result)) return result
+        if (result.startsWith('blob:')) {
+          throw new Error('Photo upload did not finish. Save the draft and try again.')
+        }
+        return result
+      }
+    : null
+
+  galleryUploadBridge.uploadVideo = onVideoUpload
+    ? async (file: File) => {
+        const result = await onVideoUploadRef.current!(file)
+        if (isUploadedVideoUrls(result)) return result
+        if (result.startsWith('blob:')) {
+          throw new Error('Video upload did not finish. Save the draft and try again.')
+        }
+        return result
+      }
+    : null
 
   const extensions = useMemo(
     () => createEditorExtensions((refId) => getCitationNumberRef.current(refId)),
@@ -99,33 +122,11 @@ export default function Editor({
   }, [references, editor])
 
   useEffect(() => {
-    if (!editor) return
-    const gallery = editor.extensionManager.extensions.find((e) => e.name === 'gallery')
-    if (!gallery) return
-
-    gallery.options.uploadImage = async (file: File) => {
-      if (!onImageUploadRef.current) {
-        throw new Error('Save the draft first, then add gallery photos.')
-      }
-      const result = await onImageUploadRef.current(file)
-      if (isUploadedImageUrls(result)) return result
-      if (result.startsWith('blob:')) {
-        throw new Error('Photo upload did not finish. Save the draft and try again.')
-      }
-      return result
+    return () => {
+      galleryUploadBridge.uploadImage = null
+      galleryUploadBridge.uploadVideo = null
     }
-    gallery.options.uploadVideo = async (file: File) => {
-      if (!onVideoUploadRef.current) {
-        throw new Error('Save the draft first, then add gallery videos.')
-      }
-      const result = await onVideoUploadRef.current(file)
-      if (isUploadedVideoUrls(result)) return result
-      if (result.startsWith('blob:')) {
-        throw new Error('Video upload did not finish. Save the draft and try again.')
-      }
-      return result
-    }
-  }, [editor, onImageUpload, onVideoUpload])
+  }, [])
 
   useEffect(() => {
     if (!editor || isInternalUpdate.current) {
