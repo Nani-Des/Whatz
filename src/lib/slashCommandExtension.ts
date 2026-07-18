@@ -17,6 +17,9 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     editor.chain().focus().deleteRange(range).run()
     window.dispatchEvent(new CustomEvent('editor:open-table-insert'))
   } },
+  { title: 'Gallery', description: 'Photo & video grid gallery', icon: '▦', command: ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).insertGallery().run()
+  } },
   { title: 'Image', description: 'Upload or link an image', icon: '🖼', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:insert-image')) } },
   { title: 'Video', description: 'Upload or embed a video', icon: '🎬', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:insert-video')) } },
   { title: 'Post link', description: 'Link to another portfolio post', icon: '📄', command: ({ editor, range }) => { editor.chain().focus().deleteRange(range).run(); window.dispatchEvent(new CustomEvent('editor:pick-post-link')) } },

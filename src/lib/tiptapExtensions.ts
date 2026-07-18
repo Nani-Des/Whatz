@@ -22,6 +22,7 @@ import { CodeBlockWithLanguage } from './codeBlockExtension'
 import { SlashCommand } from './slashCommandExtension'
 import { Citation } from './citationExtension'
 import { Video } from './videoExtension'
+import { Gallery } from './galleryExtension'
 import { PostLink } from './postLinkExtension'
 
 const sharedKit = {
@@ -46,6 +47,7 @@ export const editorExtensions = [
   MathInline,
   MathBlock,
   Video,
+  Gallery,
   PostLink,
   Link.configure({ openOnClick: false, autolink: true }),
   Table.configure({ resizable: true }),
@@ -83,6 +85,7 @@ export const contentExtensions = [
   MathInline,
   MathBlock,
   Video,
+  Gallery,
   PostLink,
   Link,
   Table,

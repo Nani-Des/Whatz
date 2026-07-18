@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import type { PostAnimationSettings } from '../types/postAnimation'
 
 const REVEAL_SELECTOR =
-  'p, h1, h2, h3, h4, blockquote, pre, ul, ol, img, table, hr, .callout, .collapsible-block, .citation, .post-video-embed'
+  'p, h1, h2, h3, h4, blockquote, pre, ul, ol, img, table, hr, .callout, .collapsible-block, .citation, .post-video-embed, .post-gallery'
 
 export function useScrollReveal(
   containerRef: React.RefObject<HTMLElement | null>,

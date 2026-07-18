@@ -90,6 +90,17 @@ export default function Editor({
     if (citation) {
       citation.options.getCitationNumber = (refId: string) => getCitationNumberRef.current(refId)
     }
+    const gallery = editor.extensionManager.extensions.find((e) => e.name === 'gallery')
+    if (gallery) {
+      gallery.options.uploadImage = async (file: File) => {
+        if (!onImageUploadRef.current) return URL.createObjectURL(file)
+        return onImageUploadRef.current(file)
+      }
+      gallery.options.uploadVideo = async (file: File) => {
+        if (!onVideoUploadRef.current) return URL.createObjectURL(file)
+        return onVideoUploadRef.current(file)
+      }
+    }
     deferEditorTask(() => {
       if (editor.isDestroyed) return
       editor.view.dispatch(editor.state.tr)
@@ -153,6 +164,9 @@ export default function Editor({
 
     const openTableInsert = () => setTableInsertOpen(true)
 
+    const insertGallery = () => editor.chain().focus().insertGallery().run()
+
+    window.addEventListener('editor:insert-gallery', insertGallery)
     window.addEventListener('editor:open-equation', openEquation)
     window.addEventListener('editor:edit-math', editEquation)
     window.addEventListener('editor:insert-math', insertMath)
@@ -164,6 +178,7 @@ export default function Editor({
     window.addEventListener('editor:insert-citation', handleInsertCitation)
 
     return () => {
+      window.removeEventListener('editor:insert-gallery', insertGallery)
       window.removeEventListener('editor:open-equation', openEquation)
       window.removeEventListener('editor:edit-math', editEquation)
       window.removeEventListener('editor:insert-math', insertMath)

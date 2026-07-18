@@ -2,10 +2,34 @@ import { createRoot, type Root } from 'react-dom/client'
 import { createElement } from 'react'
 import VideoPlayer from '../components/VideoPlayer'
 
+function mountGalleryVideo(el: HTMLElement, roots: Root[]): void {
+  if (el.querySelector('.post-video-player')) return
+  const src = el.getAttribute('data-src')
+  if (!src) return
+
+  const poster = el.getAttribute('data-poster') || undefined
+  const caption = el.getAttribute('data-caption') || undefined
+  el.innerHTML = ''
+  el.classList.add('post-gallery__item--ready')
+
+  const mount = document.createElement('div')
+  mount.className = 'post-gallery__video-mount'
+  el.appendChild(mount)
+
+  const root = createRoot(mount)
+  root.render(createElement(VideoPlayer, { src, poster, title: caption }))
+  roots.push(root)
+}
+
 export function prepareLazyMediaHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
 
   doc.querySelectorAll('img[src]').forEach((img) => {
+    if (img.closest('[data-type="gallery"]')) {
+      img.setAttribute('loading', 'lazy')
+      img.setAttribute('decoding', 'async')
+      return
+    }
     const src = img.getAttribute('src')
     if (!src || src.startsWith('data:')) return
     img.setAttribute('data-lazy-src', src)
@@ -68,6 +92,10 @@ export function hydrateLazyMedia(container: HTMLElement): () => void {
       const root = createRoot(figure)
       root.render(createElement(VideoPlayer, { src, poster, title }))
       roots.push(root)
+    })
+
+    container.querySelectorAll<HTMLElement>('.post-gallery__item--video[data-src]').forEach((el) => {
+      mountGalleryVideo(el, roots)
     })
   }
 

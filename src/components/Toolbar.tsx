@@ -382,6 +382,13 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
         <ToolbarButton onClick={() => imageInputRef.current?.click()} title="Upload image">
           <IconImage />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => window.dispatchEvent(new CustomEvent('editor:insert-gallery'))}
+          active={editor.isActive('gallery')}
+          title="Insert photo gallery"
+        >
+          <span className="text-[11px] font-semibold">▦</span>
+        </ToolbarButton>
 
         {imageActive && (
           <>
