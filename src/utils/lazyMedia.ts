@@ -1,39 +1,13 @@
 import { isBrokenMediaUrl, sanitizeBrokenMediaHtml } from './brokenMediaUrls'
-import { ARTICLE_SIZES, buildImageSrcSet, GALLERY_SIZES } from './mediaUrls'
+import { ARTICLE_SIZES, GALLERY_SIZES } from './mediaUrls'
 
-const LAZY_ROOT_MARGIN = '400px 0px'
-const LAZY_THRESHOLD = 0.01
+const LAZY_ROOT_MARGIN = '300px 0px'
 const EAGER_GALLERY_IMAGES = 3
 
 function parsePixelDimension(value: string | null | undefined): number | null {
   if (!value) return null
   const match = String(value).trim().match(/^(\d+(?:\.\d+)?)px$/)
   return match ? Math.round(Number(match[1])) : null
-}
-
-function applyResponsiveAttrs(
-  img: Element,
-  sizes: string,
-  eager = false,
-): void {
-  const full = img.getAttribute('data-lazy-src') || img.getAttribute('src')
-  if (!full || isBrokenMediaUrl(full)) return
-
-  const srcMd = img.getAttribute('data-src-md') || undefined
-  const srcSm = img.getAttribute('data-src-sm') || undefined
-  const srcSet = buildImageSrcSet(full, { medium: srcMd, small: srcSm })
-
-  if (srcSet) {
-    img.setAttribute('srcset', srcSet)
-    img.setAttribute('sizes', sizes)
-  }
-
-  if (eager) {
-    img.setAttribute('data-fetch-priority', 'high')
-    img.setAttribute('loading', 'eager')
-  } else {
-    img.setAttribute('loading', 'lazy')
-  }
 }
 
 function applyLayoutDimensions(img: Element): void {
@@ -43,70 +17,39 @@ function applyLayoutDimensions(img: Element): void {
   if (height) img.setAttribute('height', String(height))
 }
 
-function mountNativeVideo(
+/** Only use srcset when variant URLs were stored at upload time (avoids 404s on old posts). */
+function applyExplicitSrcSet(img: Element, inGallery: boolean): void {
+  const full = img.getAttribute('src')
+  const srcMd = img.getAttribute('data-src-md')
+  const srcSm = img.getAttribute('data-src-sm')
+  if (!full || !srcMd || !srcSm) return
+
+  img.setAttribute('srcset', `${srcSm} 480w, ${srcMd} 960w, ${full} 1920w`)
+  img.setAttribute('sizes', inGallery ? GALLERY_SIZES : ARTICLE_SIZES)
+}
+
+function createReaderVideo(doc: Document, src: string, poster?: string, title?: string): HTMLVideoElement {
+  const video = doc.createElement('video')
+  video.className = 'post-video-native'
+  video.src = src
+  video.controls = true
+  video.playsInline = true
+  video.preload = 'metadata'
+  if (poster) video.poster = poster
+  if (title) video.title = title
+  return video
+}
+
+function hydrateVideoPlaceholder(
+  doc: Document,
   container: HTMLElement,
   src: string,
   poster?: string,
   title?: string,
 ): void {
   container.innerHTML = ''
-  container.classList.add('post-video-embed--ready')
-
-  const video = document.createElement('video')
-  video.className = 'post-video-native'
-  video.src = src
-  video.controls = true
-  video.playsInline = true
-  video.preload = 'none'
-  if (poster) video.poster = poster
-  if (title) video.title = title
-  container.appendChild(video)
-}
-
-function mountGalleryVideo(el: HTMLElement): void {
-  if (el.querySelector('video')) return
-  const src = el.getAttribute('data-src')
-  if (!src || isBrokenMediaUrl(src)) return
-
-  const poster = el.getAttribute('data-poster') || undefined
-  const caption = el.getAttribute('data-caption') || undefined
-  el.innerHTML = ''
-  el.classList.add('post-gallery__item--ready')
-
-  const mount = document.createElement('div')
-  mount.className = 'post-gallery__video-mount'
-  el.appendChild(mount)
-  mountNativeVideo(mount, src, poster, caption)
-}
-
-function mountInlineVideo(figure: HTMLElement): void {
-  if (figure.querySelector('video')) return
-
-  const src = figure.getAttribute('data-src')
-  if (!src || isBrokenMediaUrl(src)) return
-
-  const poster = figure.getAttribute('data-poster') || undefined
-  const title = figure.getAttribute('data-title') || undefined
-  mountNativeVideo(figure, src, poster, title)
-}
-
-function loadLazyImage(img: HTMLImageElement): void {
-  const src = img.getAttribute('data-lazy-src')
-  if (!src || isBrokenMediaUrl(src)) {
-    img.removeAttribute('data-lazy-src')
-    return
-  }
-
-  const priority = img.getAttribute('data-fetch-priority')
-  if (priority === 'high') {
-    img.fetchPriority = 'high'
-    img.loading = 'eager'
-  }
-
-  img.src = src
-  img.removeAttribute('data-lazy-src')
-  img.classList.remove('post-lazy-image')
-  img.classList.add('post-lazy-image--loaded')
+  container.classList.add('post-video-embed--ready', 'post-gallery__item--ready')
+  container.appendChild(createReaderVideo(doc, src, poster, title))
 }
 
 export function prepareLazyMediaHtml(html: string): string {
@@ -122,82 +65,97 @@ export function prepareLazyMediaHtml(html: string): string {
     const eagerGallery = inGallery && galleryImageIndex < EAGER_GALLERY_IMAGES
     if (inGallery) galleryImageIndex += 1
 
-    if (!eagerGallery) {
-      img.setAttribute('data-lazy-src', src)
-      img.removeAttribute('src')
-      img.classList.add('post-lazy-image')
-    }
-
+    const eager = eagerGallery || (!inGallery && firstInlineImage)
     img.setAttribute('decoding', 'async')
-    applyLayoutDimensions(img)
-    applyResponsiveAttrs(img, inGallery ? GALLERY_SIZES : ARTICLE_SIZES, eagerGallery)
-
-    if (!inGallery && firstInlineImage) {
-      img.setAttribute('data-fetch-priority', 'high')
-      if (!eagerGallery) img.setAttribute('loading', 'lazy')
-      firstInlineImage = false
+    img.setAttribute('loading', eager ? 'eager' : 'lazy')
+    if (eager && !inGallery && firstInlineImage) {
+      img.setAttribute('fetchpriority', 'high')
     }
+
+    applyLayoutDimensions(img)
+    applyExplicitSrcSet(img, inGallery)
+
+    if (!inGallery) firstInlineImage = false
   })
 
+  // Legacy <video src> tags in saved HTML
   doc.querySelectorAll('video[src]').forEach((video) => {
     const src = video.getAttribute('src')
     if (!src || isBrokenMediaUrl(src)) return
+    const poster = video.getAttribute('poster') || undefined
+    const title = video.getAttribute('title') || undefined
     const figure = doc.createElement('figure')
     figure.setAttribute('data-type', 'video')
-    figure.setAttribute('data-src', src)
-    figure.className = 'post-video-embed'
-    const poster = video.getAttribute('poster')
-    if (poster) figure.setAttribute('data-poster', poster)
-    figure.innerHTML = '<div class="post-video-skeleton" aria-hidden="true">Video</div>'
+    figure.className = 'post-video-embed post-video-embed--ready'
+    figure.appendChild(createReaderVideo(doc, src, poster, title))
     video.replaceWith(figure)
+  })
+
+  // Inline video blocks — render real <video> immediately (same as editor), not a JS skeleton
+  doc.querySelectorAll('figure[data-type="video"][data-src]').forEach((figure) => {
+    const src = figure.getAttribute('data-src')
+    if (!src || isBrokenMediaUrl(src)) return
+    const poster = figure.getAttribute('data-poster') || undefined
+    const title = figure.getAttribute('data-title') || undefined
+    hydrateVideoPlaceholder(doc, figure as HTMLElement, src, poster, title)
+  })
+
+  // Gallery videos — render immediately so they match editor preview
+  doc.querySelectorAll('.post-gallery__item--video[data-src]').forEach((el) => {
+    const src = el.getAttribute('data-src')
+    if (!src || isBrokenMediaUrl(src)) return
+    const poster = el.getAttribute('data-poster') || undefined
+    const caption = el.getAttribute('data-caption') || undefined
+
+    const mount = doc.createElement('div')
+    mount.className = 'post-gallery__video-mount'
+    mount.appendChild(createReaderVideo(doc, src, poster, caption))
+    el.innerHTML = ''
+    el.classList.add('post-gallery__item--ready')
+    el.appendChild(mount)
   })
 
   return doc.body.innerHTML
 }
 
+/** Hydrate any videos that still need mounting (e.g. after client navigation). Images use native lazy loading. */
 export function hydrateLazyMedia(container: HTMLElement): () => void {
   let cancelled = false
 
+  const mountPendingVideos = () => {
+    if (cancelled) return
+
+    container.querySelectorAll<HTMLElement>('figure[data-type="video"][data-src]').forEach((figure) => {
+      const src = figure.getAttribute('data-src')
+      if (!src || isBrokenMediaUrl(src) || figure.querySelector('video')) return
+      const poster = figure.getAttribute('data-poster') || undefined
+      const title = figure.getAttribute('data-title') || undefined
+      hydrateVideoPlaceholder(document, figure, src, poster, title)
+    })
+
+    container.querySelectorAll<HTMLElement>('.post-gallery__item--video[data-src]').forEach((el) => {
+      const src = el.getAttribute('data-src')
+      if (!src || isBrokenMediaUrl(src) || el.querySelector('video')) return
+      const poster = el.getAttribute('data-poster') || undefined
+      const caption = el.getAttribute('data-caption') || undefined
+
+      const mount = document.createElement('div')
+      mount.className = 'post-gallery__video-mount'
+      mount.appendChild(createReaderVideo(document, src, poster, caption))
+      el.innerHTML = ''
+      el.classList.add('post-gallery__item--ready')
+      el.appendChild(mount)
+    })
+  }
+
+  mountPendingVideos()
+
   const observer = new IntersectionObserver(
-    (entries) => {
-      if (cancelled) return
-
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return
-        const target = entry.target
-
-        if (target instanceof HTMLImageElement && target.hasAttribute('data-lazy-src')) {
-          loadLazyImage(target)
-          observer.unobserve(target)
-          return
-        }
-
-        if (!(target instanceof HTMLElement)) return
-
-        if (target.matches('figure[data-type="video"][data-src]')) {
-          mountInlineVideo(target)
-          observer.unobserve(target)
-          return
-        }
-
-        if (target.matches('.post-gallery__item--video[data-src]')) {
-          mountGalleryVideo(target)
-          observer.unobserve(target)
-        }
-      })
-    },
-    { rootMargin: LAZY_ROOT_MARGIN, threshold: LAZY_THRESHOLD },
+    () => mountPendingVideos(),
+    { rootMargin: LAZY_ROOT_MARGIN, threshold: 0.01 },
   )
 
-  container.querySelectorAll<HTMLImageElement>('img[data-lazy-src]').forEach((img) => {
-    observer.observe(img)
-  })
-
-  container.querySelectorAll<HTMLElement>('figure[data-type="video"][data-src]').forEach((figure) => {
-    observer.observe(figure)
-  })
-
-  container.querySelectorAll<HTMLElement>('.post-gallery__item--video[data-src]').forEach((el) => {
+  container.querySelectorAll<HTMLElement>('figure[data-type="video"][data-src], .post-gallery__item--video[data-src]').forEach((el) => {
     observer.observe(el)
   })
 
