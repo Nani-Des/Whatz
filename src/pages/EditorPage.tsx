@@ -16,6 +16,7 @@ import type { SeriesRole } from '../types/series'
 import { DEFAULT_POST_ANIMATION } from '../types/post'
 import { slugify } from '../utils/slug'
 import { getExcerpt } from '../utils/excerpt'
+import { contentHasBrokenMediaUrls } from '../utils/brokenMediaUrls'
 
 const AUTOSAVE_INTERVAL = 30000
 
@@ -26,7 +27,7 @@ function versionFingerprint(snapshot: VersionSnapshot): string {
 }
 
 function assertNoBlobUrls(content: string) {
-  if (content.includes('blob:')) {
+  if (contentHasBrokenMediaUrls(content)) {
     throw new Error(
       'Some media uses temporary browser URLs and cannot be saved. Re-add gallery photos or videos, then save again.',
     )
@@ -149,6 +150,7 @@ export default function EditorPage() {
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [error, setError] = useState('')
+  const [mediaWarning, setMediaWarning] = useState('')
 
   const fieldsRef = useRef({
     title, tagsInput, content, excerpt, excerptManual, slug, type, status, pinned,
@@ -213,6 +215,11 @@ export default function EditorPage() {
     setAnimation(post.animation)
     setPostId(post.id)
     setLastSavedAt(post.updatedAt)
+    setMediaWarning(
+      contentHasBrokenMediaUrls(post.content)
+        ? 'Some media uses temporary URLs that no longer work for readers. Remove and re-add affected gallery photos or videos, then save.'
+        : '',
+    )
   }, [])
 
   const markSkipLoad = useCallback((pid: string) => {
@@ -349,6 +356,12 @@ export default function EditorPage() {
       saveExitSnapshotRef.current()
     }
   }, [])
+
+  useEffect(() => {
+    if (mediaWarning && !contentHasBrokenMediaUrls(content)) {
+      setMediaWarning('')
+    }
+  }, [content, mediaWarning])
 
   const titleRef = useRef(title)
   const contentRef = useRef(content)
@@ -520,6 +533,11 @@ export default function EditorPage() {
           {error && (
             <div className="mb-4">
               <FirestoreSetupBanner message={error} />
+            </div>
+          )}
+          {mediaWarning && (
+            <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              {mediaWarning}
             </div>
           )}
 

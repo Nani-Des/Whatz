@@ -1,6 +1,7 @@
 import { createRoot, type Root } from 'react-dom/client'
 import { createElement } from 'react'
 import VideoPlayer from '../components/VideoPlayer'
+import { isBrokenMediaUrl, sanitizeBrokenMediaHtml } from './brokenMediaUrls'
 
 const LAZY_ROOT_MARGIN = '320px 0px'
 const LAZY_THRESHOLD = 0.01
@@ -8,7 +9,7 @@ const LAZY_THRESHOLD = 0.01
 function mountGalleryVideo(el: HTMLElement, roots: Root[]): void {
   if (el.querySelector('.post-video-player')) return
   const src = el.getAttribute('data-src')
-  if (!src) return
+  if (!src || isBrokenMediaUrl(src)) return
 
   const poster = el.getAttribute('data-poster') || undefined
   const caption = el.getAttribute('data-caption') || undefined
@@ -28,7 +29,7 @@ function mountInlineVideo(figure: HTMLElement, roots: Root[]): void {
   if (figure.querySelector('.post-video-player')) return
 
   const src = figure.getAttribute('data-src')
-  if (!src) return
+  if (!src || isBrokenMediaUrl(src)) return
 
   const poster = figure.getAttribute('data-poster') || undefined
   const title = figure.getAttribute('data-title') || undefined
@@ -42,7 +43,10 @@ function mountInlineVideo(figure: HTMLElement, roots: Root[]): void {
 
 function loadLazyImage(img: HTMLImageElement): void {
   const src = img.getAttribute('data-lazy-src')
-  if (!src) return
+  if (!src || isBrokenMediaUrl(src)) {
+    img.removeAttribute('data-lazy-src')
+    return
+  }
 
   const priority = img.getAttribute('data-fetch-priority')
   if (priority === 'high') {
@@ -57,12 +61,12 @@ function loadLazyImage(img: HTMLImageElement): void {
 }
 
 export function prepareLazyMediaHtml(html: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const doc = new DOMParser().parseFromString(sanitizeBrokenMediaHtml(html), 'text/html')
   let firstInlineImage = true
 
   doc.querySelectorAll('img[src]').forEach((img) => {
     const src = img.getAttribute('src')
-    if (!src || src.startsWith('data:')) return
+    if (!src || src.startsWith('data:') || isBrokenMediaUrl(src)) return
 
     img.setAttribute('data-lazy-src', src)
     img.removeAttribute('src')
@@ -78,7 +82,7 @@ export function prepareLazyMediaHtml(html: string): string {
 
   doc.querySelectorAll('video[src]').forEach((video) => {
     const src = video.getAttribute('src')
-    if (!src) return
+    if (!src || isBrokenMediaUrl(src)) return
     const figure = doc.createElement('figure')
     figure.setAttribute('data-type', 'video')
     figure.setAttribute('data-src', src)

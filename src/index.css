@@ -2319,6 +2319,33 @@
     min-height: 0;
   }
 
+  .post-media--broken {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 8rem;
+    border-radius: 0.75rem;
+    background: #f5f5f5;
+    color: #737373;
+    text-align: center;
+  }
+
+  .post-media-unavailable {
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .post-gallery__item--broken,
+  img.post-media--broken {
+    object-fit: cover;
+  }
+
+  .post-video-embed.post-media--broken,
+  .post-gallery__item--video.post-media--broken {
+    min-height: 10rem;
+  }
+
   .post-video-embed {
     margin: 1.75rem 0;
     border-radius: 0.875rem;
