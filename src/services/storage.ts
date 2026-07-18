@@ -1,5 +1,6 @@
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { app } from '../firebase.js'
+import { optimizeImageForUpload } from '../utils/optimizeImage'
 
 const storage = getStorage(app)
 
@@ -8,10 +9,13 @@ export async function uploadFile(
   file: File,
   onProgress?: (pct: number) => void,
 ): Promise<string> {
-  const storageRef = ref(storage, path)
-  // uploadBytes doesn't have progress in simple API - use uploadBytesResumable if needed
   void onProgress
-  await uploadBytes(storageRef, file, { contentType: file.type })
+  const payload = file.type.startsWith('image/')
+    ? await optimizeImageForUpload(file, path.includes('/cover.') ? { maxDimension: 2400, quality: 0.85 } : undefined)
+    : file
+
+  const storageRef = ref(storage, path)
+  await uploadBytes(storageRef, payload, { contentType: payload.type })
   return getDownloadURL(storageRef)
 }
 

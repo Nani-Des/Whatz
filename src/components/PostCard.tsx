@@ -25,7 +25,7 @@ export default function PostCard({ post, seriesHint }: PostCardProps) {
     }`}>
       <Link to={postUrl(post)} className="block">
         {post.coverImageUrl && (
-          <img src={post.coverImageUrl} alt="" className="h-40 w-full object-cover" />
+          <img src={post.coverImageUrl} alt="" className="h-40 w-full object-cover" loading="lazy" decoding="async" />
         )}
         <div className="p-6 sm:p-7">
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">

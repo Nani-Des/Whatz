@@ -33,20 +33,8 @@ export default function PostView() {
   const [seriesSiblings, setSeriesSiblings] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [mediaReady, setMediaReady] = useState(false)
 
   const postKey = slug || id
-
-  useEffect(() => {
-    setMediaReady(false)
-    const schedule = () => setMediaReady(true)
-    if (typeof requestIdleCallback === 'function') {
-      const id = requestIdleCallback(schedule, { timeout: 1200 })
-      return () => cancelIdleCallback(id)
-    }
-    const timer = window.setTimeout(schedule, 200)
-    return () => window.clearTimeout(timer)
-  }, [post?.id, post?.coverImageUrl])
 
   useEffect(() => {
     if (!postKey) return
@@ -227,11 +215,13 @@ export default function PostView() {
               {post.coverImageUrl && (
                 <figure className={`post-reader-cover${anim?.coverKenBurns ? ' post-reader-cover--animated' : ''}`}>
                   <div className="post-reader-cover__frame">
-                    {mediaReady ? (
-                      <img src={post.coverImageUrl} alt="" loading="lazy" decoding="async" />
-                    ) : (
-                      <div className="post-reader-cover__placeholder" aria-hidden="true" />
-                    )}
+                    <img
+                      src={post.coverImageUrl}
+                      alt=""
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority="high"
+                    />
                   </div>
                 </figure>
               )}

@@ -17,7 +17,7 @@ export default function SeriesCard({ series, postCount }: SeriesCardProps) {
     }`}>
       <Link to={seriesHubPath(series.slug)} className="block">
         {series.coverImageUrl && (
-          <img src={series.coverImageUrl} alt="" className="h-40 w-full object-cover" />
+          <img src={series.coverImageUrl} alt="" className="h-40 w-full object-cover" loading="lazy" decoding="async" />
         )}
         <div className="p-6 sm:p-7">
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">

@@ -37,16 +37,23 @@ export function useSEO({ title, description, image, url, type = 'article' }: SEO
     const pageUrl = url || window.location.href
     setMeta('og:url', pageUrl, true)
 
+    let preloadLink: HTMLLinkElement | null = null
     if (image) {
       setMeta('og:image', image, true)
       setMeta('twitter:card', 'summary_large_image')
       setMeta('twitter:image', image)
+      preloadLink = document.createElement('link')
+      preloadLink.rel = 'preload'
+      preloadLink.as = 'image'
+      preloadLink.href = image
+      document.head.appendChild(preloadLink)
     } else {
       setMeta('twitter:card', 'summary')
     }
 
     return () => {
       document.title = 'Whatz'
+      preloadLink?.remove()
     }
   }, [title, description, image, url, type])
 }

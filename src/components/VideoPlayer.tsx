@@ -23,7 +23,6 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const [ready, setReady] = useState(false)
 
   const syncTime = useCallback(() => {
     const video = videoRef.current
@@ -38,7 +37,6 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
 
     const onLoaded = () => {
       setDuration(video.duration || 0)
-      setReady(true)
     }
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)
@@ -98,12 +96,12 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
           src={src}
           poster={poster}
           playsInline
-          preload="metadata"
+          preload="none"
           className="post-video-player__video"
           title={title}
           onClick={togglePlay}
         />
-        {!playing && ready && (
+        {!playing && (
           <button type="button" className="post-video-player__play-overlay" onClick={togglePlay} aria-label="Play video">
             ▶
           </button>
