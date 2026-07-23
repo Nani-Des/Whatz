@@ -23,6 +23,7 @@ import { SlashCommand } from './slashCommandExtension'
 import { Citation } from './citationExtension'
 import { Video } from './videoExtension'
 import { Gallery } from './galleryExtension'
+import { TextSticker } from './textStickerExtension'
 import { PostLink } from './postLinkExtension'
 
 const sharedKit = {
@@ -48,6 +49,7 @@ export const editorExtensions = [
   MathBlock,
   Video,
   Gallery,
+  TextSticker,
   PostLink,
   Link.configure({ openOnClick: false, autolink: true }),
   Table.configure({ resizable: true }),
@@ -86,6 +88,7 @@ export const contentExtensions = [
   MathBlock,
   Video,
   Gallery,
+  TextSticker,
   PostLink,
   Link,
   Table,

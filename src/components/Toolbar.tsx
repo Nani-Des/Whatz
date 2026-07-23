@@ -395,6 +395,13 @@ export default function Toolbar({ editor, onImageUpload, onVideoUpload, referenc
           <IconImage />
         </ToolbarButton>
         <ToolbarButton
+          onClick={() => editor.chain().focus().insertTextSticker().run()}
+          active={editor.isActive('textSticker')}
+          title="Text sticker"
+        >
+          <span className="text-xs font-bold tracking-tight">◆</span>
+        </ToolbarButton>
+        <ToolbarButton
           onClick={() => window.dispatchEvent(new CustomEvent('editor:insert-gallery'))}
           active={editor.isActive('gallery')}
           title="Insert photo gallery"

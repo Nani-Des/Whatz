@@ -17,6 +17,15 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     editor.chain().focus().deleteRange(range).run()
     window.dispatchEvent(new CustomEvent('editor:open-table-insert'))
   } },
+  { title: 'Text sticker', description: 'Editable visual label for an idea', icon: '◆', command: ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).insertTextSticker().run()
+  } },
+  { title: 'Sticky note sticker', description: 'Tilted note-style sticker', icon: '📝', command: ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).insertTextSticker({ shape: 'note', color: 'yellow' }).run()
+  } },
+  { title: 'Idea burst sticker', description: 'Bold burst callout sticker', icon: '✦', command: ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).insertTextSticker({ shape: 'burst', color: 'coral' }).run()
+  } },
   { title: 'Gallery', description: 'Photo & video grid gallery', icon: '▦', command: ({ editor, range }) => {
     editor.chain().focus().deleteRange(range).insertGallery().run()
   } },
